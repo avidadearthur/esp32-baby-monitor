@@ -1,3 +1,11 @@
+## Git Workflow
+To make sure we don't loose code or and can get the most out of the version control tools form GitLab let's try to follow the following gidelines.
+1. Watch videos about git on toledo.
+2. Always work under dev/your_username_branch. When you've got the code you are working on functoning create a pull request and we can add to the dev/ branch.
+3. The master branch should only contain code that works, let's keep it like that.
+4. Commit your code often and with meaningful commits. If something goes wrong you can go back to your previous commits.
+5. Sugestions ... ?
+
 ## About The Project
 There are many great README templates available on GitHub; however, I didn't find one that really suited our needs. Let's leave this like that for now and later add more info regarding the software side of this project.
 
