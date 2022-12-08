@@ -1,5 +1,6 @@
 ## Git Workflow
-To make sure we don't loose code or and can get the most out of the version control tools form GitLab let's try to follow the following gidelines.
+To make sure we don't loose code and can get the most out of the version control tools form GitLab let's try to follow the following gidelines:
+
 1. Watch videos about git on toledo.
 2. Always work under dev/your_username_branch. When you've got the code you are working on functoning create a pull request and we can add to the dev/ branch.
 3. The master branch should only contain code that works, let's keep it like that.
