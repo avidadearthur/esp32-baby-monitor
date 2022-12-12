@@ -1,5 +1,6 @@
 # Clion IDE CMake build & config
 .idea/
+.vscode/
 cmake-build-*/
 
 # ESP-IDF default build directory name
