@@ -5,6 +5,7 @@ cmake-build-*/
 
 # ESP-IDF default build directory name
 build
+ESP32_freertos_queue/sdkconfig
 
 # Components Unit Test Apps files
 components/**/build
