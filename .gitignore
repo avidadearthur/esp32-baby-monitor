@@ -1,0 +1,16 @@
+# Clion IDE CMake build & config
+.idea/
+cmake-build-*/
+
+# ESP-IDF default build directory name
+build
+
+# Components Unit Test Apps files
+components/**/build
+components/**/sdkconfig
+components/**/sdkconfig.old
+
+.config
+*.o
+*.pyc
+sdkconfig.old
