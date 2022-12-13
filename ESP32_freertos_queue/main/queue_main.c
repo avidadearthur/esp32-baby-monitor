@@ -24,7 +24,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#include "freertos/heap_regions.h"
 
 #define COLOR_PRINT_BLACK "30"
 #define COLOR_PRINT_RED "31"
@@ -48,7 +47,6 @@ void tx_task1(void *arg)
 
     while (1)
     {
-        printf("free DRAM %u IRAM ??", esp_get_free_heap_size());
         // color_printf(COLOR_PRINT_BLUE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
         color_printf(COLOR_PRINT_BLUE, "tx_task1 notify %d", txpos);
         if (xQueueSendToBack(demo_queue, &txpos, 1000 / portTICK_RATE_MS) != pdTRUE)
