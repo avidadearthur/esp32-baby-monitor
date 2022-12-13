@@ -42,7 +42,7 @@ From Kolban's book on esp32 (it's already shared in the OneDrive):
 
 _See the book and the FreeRTOS API docs for more info about `xTaskCreate()`._
 
-> ##Queues within RTOS
+> ## Queues within RTOS
 > A queue is a data container abstraction. Think of a queue as holding items. When an 
 > item is added to a queue, it is added to the end. When an item is removed from a 
 > queue, it is removed from the front. This provides a first-in/first-out paradigm. Think of 
