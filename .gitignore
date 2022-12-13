@@ -16,3 +16,4 @@ components/**/sdkconfig.old
 *.o
 *.pyc
 sdkconfig.old
+ESP32_freertos_adc/sdkconfig
