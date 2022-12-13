@@ -19,7 +19,7 @@
 #include "sdkconfig.h"
 
 #include "esp_system.h"
-#include "esp_heap_alloc_caps.h"
+#include "esp_heap_caps.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -48,7 +48,8 @@ void tx_task1(void *arg)
 
     while (1)
     {
-        color_printf(COLOR_PRINT_BLUE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
+        printf("free DRAM %u IRAM ??", esp_get_free_heap_size());
+        // color_printf(COLOR_PRINT_BLUE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
         color_printf(COLOR_PRINT_BLUE, "tx_task1 notify %d", txpos);
         if (xQueueSendToBack(demo_queue, &txpos, 1000 / portTICK_RATE_MS) != pdTRUE)
         {
@@ -67,7 +68,7 @@ void tx_task2(void *arg)
 
     while (1)
     {
-        color_printf(COLOR_PRINT_CYAN, "\tfree DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
+        // color_printf(COLOR_PRINT_CYAN, "\tfree DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
         color_printf(COLOR_PRINT_CYAN, "\ttx_task2 notify %d", txpos);
         if (xQueueSendToBack(demo_queue, &txpos, 1000 / portTICK_RATE_MS) != pdTRUE)
         {
@@ -93,7 +94,7 @@ void rx_task(void *arg)
         }
         else
         {
-            color_printf(COLOR_PRINT_GREEN, "\t\tfree DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
+            // color_printf(COLOR_PRINT_GREEN, "\t\tfree DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
             color_printf(COLOR_PRINT_GREEN, "\t\trx_task get queued value %d", rxpos);
         }
         if (uxQueueMessagesWaiting(demo_queue) == 0)
@@ -106,11 +107,11 @@ void rx_task(void *arg)
 void app_main()
 {
     color_printf(COLOR_PRINT_PURPLE, "start ESP32");
-    color_printf(COLOR_PRINT_PURPLE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
+    // color_printf(COLOR_PRINT_PURPLE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
 
     demo_queue = xQueueCreate(10, sizeof(uint32_t));
 
-    color_printf(COLOR_PRINT_PURPLE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
+    // color_printf(COLOR_PRINT_PURPLE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
 
     color_printf(COLOR_PRINT_PURPLE, "create three tasks");
     xTaskCreate(tx_task1, "tx_task1", CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, NULL, 5, NULL);
