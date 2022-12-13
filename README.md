@@ -21,10 +21,10 @@ As soon as we have code written here we can document it better.
 
 This is an example of how to list things you need to use the software and how to install them.
 
-1. Clone the repo
-   ```sh
-   git clone https://gitlab.groept.be/ib3/a22-baby2.git
-   ```
+1. Install esp-idf
+  I (arthur) have been using the plug-in from VS Code. I did the installation by following this [tutorial](https://www.youtube.com/watch?v=Lc6ausiKvQM). But feel free to use Clion and follow the videos on Toledo.
+
+2. Clone the repo `git clone https://gitlab.groept.be/ib3/a22-baby2.git`
 
   <!-- USAGE EXAMPLES -->
 ## Usage
