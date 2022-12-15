@@ -223,6 +223,35 @@ void init_microphone(void)
     ESP_ERROR_CHECK(i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL));
 }
 
+/**
+ * @brief Scale data to 8bit for data from ADC.
+ *        Data from ADC are 12bit width by default.
+ *        DAC can only output 8 bit data.
+ *        Scale each 12bit ADC data to 8bit DAC data.
+ */
+void example_i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
+{
+    uint32_t j = 0;
+    uint32_t dac_value = 0;
+#if (EXAMPLE_I2S_SAMPLE_BITS == 16)
+    for (int i = 0; i < len; i += 2)
+    {
+        dac_value = ((((uint16_t)(s_buff[i + 1] & 0xf) << 8) | ((s_buff[i + 0]))));
+        d_buff[j++] = 0;
+        d_buff[j++] = dac_value * 256 / 4096;
+    }
+#else
+    for (int i = 0; i < len; i += 4)
+    {
+        dac_value = ((((uint16_t)(s_buff[i + 3] & 0xf) << 8) | ((s_buff[i + 2]))));
+        d_buff[j++] = 0;
+        d_buff[j++] = 0;
+        d_buff[j++] = 0;
+        d_buff[j++] = dac_value * 256 / 4096;
+    }
+#endif
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "PDM microphone recording Example start");
