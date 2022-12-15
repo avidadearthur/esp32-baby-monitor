@@ -215,15 +215,6 @@ void init_microphone(void)
         .use_apll = 0,
     };
 
-    // Set the pinout configuration (set using menuconfig)
-    i2s_pin_config_t pin_config = {
-        .mck_io_num = I2S_PIN_NO_CHANGE,
-        .bck_io_num = I2S_PIN_NO_CHANGE,
-        .ws_io_num = CONFIG_EXAMPLE_I2S_CLK_GPIO,
-        .data_out_num = I2S_PIN_NO_CHANGE,
-        .data_in_num = CONFIG_EXAMPLE_I2S_DATA_GPIO,
-    };
-
     // Call driver installation function before any I2S R/W operation.
     ESP_ERROR_CHECK(i2s_driver_install(CONFIG_EXAMPLE_I2S_CH, &i2s_config, 0, NULL));
     ESP_ERROR_CHECK(i2s_set_pin(CONFIG_EXAMPLE_I2S_CH, &pin_config));
