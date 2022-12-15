@@ -257,6 +257,21 @@ void example_i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
 #endif
 }
 
+void adc_read_task(void *arg)
+{
+    adc1_config_width(ADC_WIDTH_12Bit);
+    adc1_config_channel_atten(ADC1_TEST_CHANNEL, ADC_ATTEN_11db);
+    esp_adc_cal_characteristics_t characteristics;
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, V_REF, &characteristics);
+    while (1)
+    {
+        uint32_t voltage;
+        esp_adc_cal_get_voltage(ADC1_TEST_CHANNEL, &characteristics, &voltage);
+        ESP_LOGI(TAG, "%d mV", voltage);
+        vTaskDelay(200 / portTICK_RATE_MS);
+    }
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "PDM microphone recording Example start");
@@ -269,8 +284,12 @@ void app_main(void)
     // This part needs to be replaced with analog microphone initialization //
 
     ESP_LOGI(TAG, "Starting recording for %d seconds!", CONFIG_EXAMPLE_REC_TIME);
+
     // Start Recording
     record_wav(CONFIG_EXAMPLE_REC_TIME);
+    xTaskCreate(adc_read_task, "ADC read task", 2048, NULL, 5, NULL);
+
     // Stop I2S driver and destroy
     ESP_ERROR_CHECK(i2s_driver_uninstall(CONFIG_EXAMPLE_I2S_CH));
+    return ESP_OK;
 }
