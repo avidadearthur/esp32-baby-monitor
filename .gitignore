@@ -17,3 +17,4 @@ components/**/sdkconfig.old
 *.pyc
 sdkconfig.old
 ESP32_freertos_adc/sdkconfig
+i2s_audio_recorder_sdcard/sdkconfig
