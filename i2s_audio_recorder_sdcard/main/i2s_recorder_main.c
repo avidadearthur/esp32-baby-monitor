@@ -200,19 +200,22 @@ void record_wav(uint32_t rec_time)
     spi_bus_free(host.slot);
 }
 
+/**
+ * @brief I2S ADC mode init.
+ */
 void init_microphone(void)
 {
-    // Set the I2S configuration as PDM and 16bits per sample
+    int i2s_num = EXAMPLE_I2S_NUM;
     i2s_config_t i2s_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM,
-        .sample_rate = CONFIG_EXAMPLE_SAMPLE_RATE,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
-        .dma_buf_count = 8,
-        .dma_buf_len = 200,
-        .use_apll = 0,
+        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN | I2S_MODE_ADC_BUILT_IN,
+        .sample_rate = EXAMPLE_I2S_SAMPLE_RATE,
+        .bits_per_sample = EXAMPLE_I2S_SAMPLE_BITS,
+        .communication_format = I2S_COMM_FORMAT_STAND_MSB,
+        .channel_format = EXAMPLE_I2S_FORMAT,
+        .intr_alloc_flags = 0,
+        .dma_buf_count = 6,
+        .dma_buf_len = 256,
+        .use_apll = 1,
     };
 
     // Call driver installation function before any I2S R/W operation.
