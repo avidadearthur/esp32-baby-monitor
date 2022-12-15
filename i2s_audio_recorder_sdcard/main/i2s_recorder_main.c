@@ -22,8 +22,10 @@
 #include "driver/spi_common.h"
 #include "sdmmc_cmd.h"
 #include "sdkconfig.h"
+#include "esp_adc_cal.h"
+#include "driver/adc.h"
 
-// Start init i2s adc configs //
+// Start init i2s adc configs (Some are redundant - ! remove later) //
 
 // i2s number
 #define EXAMPLE_I2S_NUM (0)
@@ -174,7 +176,7 @@ void record_wav(uint32_t rec_time)
     // Write the header to the WAV file
     fwrite(wav_header_fmt, 1, WAVE_HEADER_SIZE, f);
 
-    char *i2s_read_buff = (char *)calloc(i2s_read_len, sizeof(char));
+    char *i2s_read_buff = (char *)calloc(SAMPLE_SIZE, sizeof(char));
     i2s_adc_enable(CONFIG_EXAMPLE_I2S_CH);
     // Start recording
     while (flash_wr_size < flash_rec_size)
