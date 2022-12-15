@@ -19,23 +19,14 @@
 
 #define V_REF 1100
 
-// EXAMPLE_I2S_NUM
-#define I2S_COMM_MODE (0) // ADC/DAC Mode
-// EXAMPLE_I2S_SAMPLE_RATE
-#define I2S_SAMPLE_RATE (44100)
-// EXAMPLE_I2S_SAMPLE_BITS
-#define I2S_SAMPLE_BITS (16)
-// EXAMPLE_I2S_BUF_DEBUG
-#define I2S_BUF_DEBUG (0) // enable display buffer for debug
-// EXAMPLE_I2S_READ_LEN
-#define I2S_READ_LEN (16 * 1024) // I2S read buffer length
-// EXAMPLE_I2S_FORMAT
+#define I2S_COMM_MODE 0 // ADC/DAC Mode
+#define I2S_SAMPLE_RATE 44100
+#define I2S_SAMPLE_BITS 16
+#define I2S_BUF_DEBUG 0        // enable display buffer for debug
+#define I2S_READ_LEN 16 * 1024 // I2S read buffer length
 #define I2S_FORMAT (I2S_CHANNEL_FMT_RIGHT_LEFT)
-// EXAMPLE_I2S_CHANNEL_NUM
-#define I2S_CHANNEL_NUM 0 // I2S channel number
-// I2S built-in ADC unit
-#define I2S_ADC_UNIT ADC_UNIT_1 // I2S built-in ADC unit
-// I2S built-in ADC channel
+#define I2S_CHANNEL_NUM 0              // I2S channel number
+#define I2S_ADC_UNIT ADC_UNIT_1        // I2S built-in ADC unit
 #define I2S_ADC_CHANNEL ADC1_CHANNEL_0 // I2S built-in ADC channel GPIO36
 
 #define SPI_MOSI_GPIO 23
@@ -46,13 +37,12 @@
 static const char *TAG = "I2S_ADC_REC";
 
 #define BIT_SAMPLE 16
-#define SAMPLE_RATE 44100
 
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
 #define NUM_CHANNELS (1) // For mono recording only!
 #define SD_MOUNT_POINT "/sdcard"
 #define SAMPLE_SIZE (BIT_SAMPLE * 1024)
-#define BYTE_RATE (SAMPLE_RATE * (BIT_SAMPLE / 8)) * NUM_CHANNELS
+#define BYTE_RATE (I2S_SAMPLE_RATE * (BIT_SAMPLE / 8)) * NUM_CHANNELS
 
 // When testing SD and SPI modes, keep in mind that once the card has been
 // initialized in SPI mode, it can not be reinitialized in SD mode without
@@ -130,6 +120,7 @@ void generate_wav_header(char *wav_header, uint32_t wav_size, uint32_t sample_ra
 {
     uint32_t file_size = wav_size + WAVE_HEADER_SIZE - 8;
     uint32_t byte_rate = BYTE_RATE;
+    sample_rate = sample_rate;
 
     const char set_wav_header[] = {
         'R', 'I', 'F', 'F',                                                  // ChunkID
@@ -171,35 +162,6 @@ void init_microphone(void)
     // Call driver installation function and adc pad.
     ESP_ERROR_CHECK(i2s_driver_install(i2s_num, &i2s_config, 0, NULL));
     ESP_ERROR_CHECK(i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL));
-}
-
-/**
- * @brief Scale data to 8bit for data from ADC.
- *        Data from ADC are 12bit width by default.
- *        DAC can only output 8 bit data.
- *        Scale each 12bit ADC data to 8bit DAC data.
- */
-void example_i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
-{
-    uint32_t j = 0;
-    uint32_t dac_value = 0;
-#if (I2S_SAMPLE_BITS == 16)
-    for (int i = 0; i < len; i += 2)
-    {
-        dac_value = ((((uint16_t)(s_buff[i + 1] & 0xf) << 8) | ((s_buff[i + 0]))));
-        d_buff[j++] = 0;
-        d_buff[j++] = dac_value * 256 / 4096;
-    }
-#else
-    for (int i = 0; i < len; i += 4)
-    {
-        dac_value = ((((uint16_t)(s_buff[i + 3] & 0xf) << 8) | ((s_buff[i + 2]))));
-        d_buff[j++] = 0;
-        d_buff[j++] = 0;
-        d_buff[j++] = 0;
-        d_buff[j++] = dac_value * 256 / 4096;
-    }
-#endif
 }
 
 void record_wav(uint32_t rec_time)
