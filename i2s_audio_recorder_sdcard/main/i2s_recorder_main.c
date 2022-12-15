@@ -291,5 +291,4 @@ void app_main(void)
 
     // Stop I2S driver and destroy
     ESP_ERROR_CHECK(i2s_driver_uninstall(CONFIG_EXAMPLE_I2S_CH));
-    return ESP_OK;
 }
