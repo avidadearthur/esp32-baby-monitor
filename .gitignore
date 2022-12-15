@@ -20,3 +20,4 @@ ESP32_freertos_adc/sdkconfig
 i2s_audio_recorder_sdcard/sdkconfig
 ESP32_i2s_audio/main/main.c
 .gitignore
+ESP32_i2s_audio/sdkconfig
