@@ -27,6 +27,11 @@
 
 // Start init i2s adc configs (Some are redundant - ! remove later) //
 
+#if CONFIG_IDF_TARGET_ESP32
+
+#define V_REF 1100
+#define ADC1_TEST_CHANNEL (ADC1_CHANNEL_7)
+
 // i2s number
 #define EXAMPLE_I2S_NUM (0)
 // i2s sample rate
@@ -79,9 +84,9 @@ void mount_sdcard(void)
     ESP_LOGI(TAG, "Initializing SD card");
 
     spi_bus_config_t bus_cfg = {
-        .mosi_io_num = CONFIG_EXAMPLE_SPI_MOSI_GPIO,
-        .miso_io_num = CONFIG_EXAMPLE_SPI_MISO_GPIO,
-        .sclk_io_num = CONFIG_EXAMPLE_SPI_SCLK_GPIO,
+        .mosi_io_num = 23, // CONFIG_EXAMPLE_SPI_MOSI_GPIO
+        .miso_io_num = 19, // CONFIG_EXAMPLE_SPI_MISO_GPIO
+        .sclk_io_num = 18, // CONFIG_EXAMPLE_SPI_SCLK_GPIO
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = 4000,
@@ -176,7 +181,6 @@ void record_wav(uint32_t rec_time)
     // Write the header to the WAV file
     fwrite(wav_header_fmt, 1, WAVE_HEADER_SIZE, f);
 
-    char *i2s_read_buff = (char *)calloc(SAMPLE_SIZE, sizeof(char));
     i2s_adc_enable(CONFIG_EXAMPLE_I2S_CH);
     // Start recording
     while (flash_wr_size < flash_rec_size)
@@ -292,3 +296,4 @@ void app_main(void)
     // Stop I2S driver and destroy
     ESP_ERROR_CHECK(i2s_driver_uninstall(CONFIG_EXAMPLE_I2S_CH));
 }
+#endif
