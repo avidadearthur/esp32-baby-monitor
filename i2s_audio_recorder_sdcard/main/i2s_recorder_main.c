@@ -23,6 +23,29 @@
 #include "sdmmc_cmd.h"
 #include "sdkconfig.h"
 
+// Start init i2s adc configs //
+
+// i2s number
+#define EXAMPLE_I2S_NUM (0)
+// i2s sample rate
+#define EXAMPLE_I2S_SAMPLE_RATE (16000)
+// i2s data bits
+#define EXAMPLE_I2S_SAMPLE_BITS (16)
+// enable display buffer for debug
+#define EXAMPLE_I2S_BUF_DEBUG (0)
+// I2S read buffer length
+#define EXAMPLE_I2S_READ_LEN (16 * 1024)
+// I2S data format
+#define EXAMPLE_I2S_FORMAT (I2S_CHANNEL_FMT_RIGHT_LEFT)
+// I2S channel number
+#define EXAMPLE_I2S_CHANNEL_NUM ((EXAMPLE_I2S_FORMAT < I2S_CHANNEL_FMT_ONLY_RIGHT) ? (2) : (1))
+// I2S built-in ADC unit
+#define I2S_ADC_UNIT ADC_UNIT_1
+// I2S built-in ADC channel
+#define I2S_ADC_CHANNEL ADC1_CHANNEL_0
+
+// End init i2s adc configs //
+
 static const char *TAG = "pdm_rec_example";
 
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
