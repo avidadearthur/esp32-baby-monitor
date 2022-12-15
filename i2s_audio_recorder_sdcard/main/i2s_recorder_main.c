@@ -174,12 +174,15 @@ void record_wav(uint32_t rec_time)
     // Write the header to the WAV file
     fwrite(wav_header_fmt, 1, WAVE_HEADER_SIZE, f);
 
+    char *i2s_read_buff = (char *)calloc(i2s_read_len, sizeof(char));
+    i2s_adc_enable(CONFIG_EXAMPLE_I2S_CH);
     // Start recording
     while (flash_wr_size < flash_rec_size)
     {
         // TODO: The part below needs to be replaced with analog microphone reading //
 
         // Read the RAW samples from the microphone
+        // Read data from I2S bus, in this case, from ADC. //
         i2s_read(CONFIG_EXAMPLE_I2S_CH, (char *)i2s_readraw_buff, SAMPLE_SIZE, &bytes_read, 100);
 
         // TODO: The part above needs to be replaced with analog microphone reading //
