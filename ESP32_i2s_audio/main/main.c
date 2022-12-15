@@ -22,7 +22,7 @@
 // EXAMPLE_I2S_NUM
 #define I2S_COMM_MODE (0) // ADC/DAC Mode
 // EXAMPLE_I2S_SAMPLE_RATE
-#define I2S_SAMPLE_RATE (44000)
+#define I2S_SAMPLE_RATE (44100)
 // EXAMPLE_I2S_SAMPLE_BITS
 #define I2S_SAMPLE_BITS (16)
 // EXAMPLE_I2S_BUF_DEBUG
@@ -32,7 +32,7 @@
 // EXAMPLE_I2S_FORMAT
 #define I2S_FORMAT (I2S_CHANNEL_FMT_RIGHT_LEFT)
 // EXAMPLE_I2S_CHANNEL_NUM
-#define I2S_CHANNEL_NUM ((EXAMPLE_I2S_FORMAT < I2S_CHANNEL_FMT_ONLY_RIGHT) ? (2) : (1)) // I2S channel number
+#define I2S_CHANNEL_NUM 0 // I2S channel number
 // I2S built-in ADC unit
 #define I2S_ADC_UNIT ADC_UNIT_1 // I2S built-in ADC unit
 // I2S built-in ADC channel
@@ -45,11 +45,14 @@
 
 static const char *TAG = "I2S_ADC_REC";
 
+#define BIT_SAMPLE 16
+#define SAMPLE_RATE 44100
+
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
 #define NUM_CHANNELS (1) // For mono recording only!
 #define SD_MOUNT_POINT "/sdcard"
-#define SAMPLE_SIZE (CONFIG_EXAMPLE_BIT_SAMPLE * 1024)
-#define BYTE_RATE (CONFIG_EXAMPLE_SAMPLE_RATE * (CONFIG_EXAMPLE_BIT_SAMPLE / 8)) * NUM_CHANNELS
+#define SAMPLE_SIZE (BIT_SAMPLE * 1024)
+#define BYTE_RATE (SAMPLE_RATE * (BIT_SAMPLE / 8)) * NUM_CHANNELS
 
 // When testing SD and SPI modes, keep in mind that once the card has been
 // initialized in SPI mode, it can not be reinitialized in SD mode without
@@ -229,7 +232,7 @@ void record_wav(uint32_t rec_time)
     // Write the header to the WAV file
     fwrite(wav_header_fmt, 1, WAVE_HEADER_SIZE, f);
 
-    i2s_adc_enable(CONFIG_EXAMPLE_I2S_CH);
+    i2s_adc_enable(I2S_CHANNEL_NUM);
     // Start recording
     while (flash_wr_size < flash_rec_size)
     {
@@ -237,7 +240,7 @@ void record_wav(uint32_t rec_time)
 
         // Read the RAW samples from the microphone
         // Read data from I2S bus, in this case, from ADC. //
-        i2s_read(CONFIG_EXAMPLE_I2S_CH, (char *)i2s_readraw_buff, SAMPLE_SIZE, &bytes_read, 100);
+        i2s_read(I2S_CHANNEL_NUM, (char *)i2s_readraw_buff, SAMPLE_SIZE, &bytes_read, 100);
 
         // TODO: The part above needs to be replaced with analog microphone reading //
 
@@ -264,7 +267,7 @@ void adc_read_task(void *arg)
 
 void app_main(void)
 {
-    int rec_time = 5;
+    int rec_time = 15;
 
     ESP_LOGI(TAG, "PDM microphone recording Example start");
     // Mount the SDCard for recording the audio file
