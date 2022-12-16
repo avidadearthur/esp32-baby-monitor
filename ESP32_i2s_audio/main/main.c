@@ -39,7 +39,7 @@ static const char *TAG = "I2S_ADC_REC";
 #define BIT_SAMPLE 16
 
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
-#define NUM_CHANNELS (1) // For mono recording only!
+#define NUM_CHANNELS 1 // For mono recording only!
 #define SD_MOUNT_POINT "/sdcard"
 #define SAMPLE_SIZE (BIT_SAMPLE * 1024)
 #define BYTE_RATE (I2S_SAMPLE_RATE * (BIT_SAMPLE / 8)) * NUM_CHANNELS
@@ -120,7 +120,6 @@ void generate_wav_header(char *wav_header, uint32_t wav_size, uint32_t sample_ra
 {
     uint32_t file_size = wav_size + WAVE_HEADER_SIZE - 8;
     uint32_t byte_rate = BYTE_RATE;
-    sample_rate = sample_rate;
 
     const char set_wav_header[] = {
         'R', 'I', 'F', 'F',                                                  // ChunkID
@@ -229,9 +228,9 @@ void adc_read_task(void *arg)
 
 void app_main(void)
 {
-    int rec_time = 15;
+    int rec_time = 10;
 
-    ESP_LOGI(TAG, "PDM microphone recording Example start");
+    ESP_LOGI(TAG, "Analog microphone recording Example start");
     // Mount the SDCard for recording the audio file
     mount_sdcard();
 
