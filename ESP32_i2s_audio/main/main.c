@@ -24,7 +24,7 @@
 #define I2S_SAMPLE_BITS 16
 #define I2S_BUF_DEBUG 0        // enable display buffer for debug
 #define I2S_READ_LEN 16 * 1024 // I2S read buffer length
-#define I2S_FORMAT (I2S_CHANNEL_FMT_RIGHT_LEFT)
+#define I2S_FORMAT (I2S_CHANNEL_FMT_ONLY_RIGHT)
 #define I2S_CHANNEL_NUM 0              // I2S channel number
 #define I2S_ADC_UNIT ADC_UNIT_1        // I2S built-in ADC unit
 #define I2S_ADC_CHANNEL ADC1_CHANNEL_0 // I2S built-in ADC channel GPIO36
