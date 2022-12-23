@@ -40,9 +40,6 @@
 #define SAMPLE_SIZE (BIT_SAMPLE * 1024)
 #define BYTE_RATE (I2S_SAMPLE_RATE * (BIT_SAMPLE / 8)) * NUM_CHANNELS
 
-int i2s_read_len = (12);
-int i2s_write_len = (8);
-
 /**
  * @brief I2S ADC mode init.
  */
@@ -96,21 +93,22 @@ void i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
 #if CONFIG_TRANSMITTER
 void transmitter(void *pvParameters)
 {
-    size_t bytes_read;
-
     ESP_LOGI(pcTaskGetName(0), "Start");
-
-    char *i2s_read_buff = (char *)calloc(i2s_read_len, sizeof(char));
-    uint8_t *i2s_write_buff = (uint8_t *)calloc(i2s_write_len, sizeof(char));
-
-    i2s_adc_enable(I2S_CHANNEL_NUM);
 
     NRF24_t dev;
     NRF24_t *nrf24 = &dev;
     Nrf24_init(&dev);
-    uint8_t payload = sizeof(i2s_write_buff);
+    uint8_t payload = 32;
     uint8_t channel = 90;
     Nrf24_config(&dev, channel, payload);
+
+    static int16_t i2s_readraw_buff[SAMPLE_SIZE]; // I2S read buffer, contains acctually 12-bit data
+    uint8_t i2s_scaled_buff[SAMPLE_SIZE];         // I2S buffer scaled from 12 to 8-bit
+    size_t bytes_read;
+
+    uint8_t *nrf_buff = (uint8_t *)calloc(payload, sizeof(uint8_t)); // NRF24L01 buffer
+
+    i2s_adc_enable(I2S_CHANNEL_NUM);
 
     // Set the receiver address using 5 characters
     esp_err_t ret = Nrf24_setTADDR(&dev, (uint8_t *)"FGHIJ");
@@ -129,33 +127,37 @@ void transmitter(void *pvParameters)
 
     // Print settings
     Nrf24_printDetails(&dev);
+
     // Start ADC
     while (1)
     {
+        // Read the RAW samples from the microphone
         // Read data from I2S bus, in this case, from ADC. //
-        i2s_read(I2S_CHANNEL_NUM, (void *)i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
+        i2s_read(I2S_CHANNEL_NUM, (void *)i2s_readraw_buff, SAMPLE_SIZE, &bytes_read, 100);
         // process data and scale to 8bit for I2S DAC.
-        i2s_adc_data_scale(i2s_write_buff, (uint8_t *)i2s_read_buff, i2s_read_len);
-        // i2s_write_buff needs to be the buffer that is sent via nr24l01.
+        i2s_adc_data_scale(i2s_scaled_buff, (uint8_t *)i2s_readraw_buff, SAMPLE_SIZE);
 
-        // multiply the content of the buffer by 10 to make it more audible.
-        for (int i = 0; i < i2s_write_len; i++)
+        // split i2s_readraw_buff into buffers of 32 bytes.
+        for (int i = 0; i < SAMPLE_SIZE / 32; i++)
         {
-            i2s_write_buff[i] *= 10;
-        }
+            for (int j = 0; j < 32; j++)
+            {
+                nrf_buff[j] = i2s_scaled_buff[i * 32 + j]; // multiply by 10 to make it more audible.
+            }
 
-        Nrf24_send(&dev, i2s_write_buff);
+            Nrf24_send(&dev, nrf_buff);
 
-        if (Nrf24_isSend(&dev, 1000))
-        {
-            ESP_LOGI(pcTaskGetName(0), "sending audio data ...");
-            Nrf24_print_status(Nrf24_getStatus(nrf24));
+            if (Nrf24_isSend(&dev, 1000))
+            {
+                ESP_LOGI(pcTaskGetName(0), "sending audio data ...");
+            }
+            else
+            {
+                ESP_LOGI(pcTaskGetName(0), "sending audio failed ...");
+            }
         }
-        else
-        {
-            ESP_LOGI(pcTaskGetName(0), "sending audio failed ...");
-            Nrf24_print_status(Nrf24_getStatus(nrf24));
-        }
+        // delay 1ms
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 #endif // CONFIG_TRANSMITTER
