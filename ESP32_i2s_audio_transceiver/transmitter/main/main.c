@@ -37,7 +37,6 @@
 #define BIT_SAMPLE (16)
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
 #define NUM_CHANNELS (1) // For mono recording only!
-#define SAMPLE_SIZE (BIT_SAMPLE * 1024)
 #define BYTE_RATE (I2S_SAMPLE_RATE * (BIT_SAMPLE / 8)) * NUM_CHANNELS
 
 #define SPI_MOSI_GPIO 23
@@ -61,7 +60,6 @@ static const char *TAG = "I2S_ADC_REC";
 sdmmc_host_t host = SDSPI_HOST_DEFAULT();
 sdmmc_card_t *card;
 
-static int16_t i2s_readraw_buff[SAMPLE_SIZE];
 size_t bytes_read;
 const int WAVE_HEADER_SIZE = 44;
 
@@ -223,7 +221,7 @@ void transmitter(void *pvParameters)
     ESP_LOGI(pcTaskGetName(0), "Start");
 
     //----------------------------Allocate space for the buffers used in this test----------------------------------- //
-    int i2s_read_len = (12);
+    int i2s_read_len = (0.01 * BYTE_RATE);
     int i2s_write_len = (32);
     char *i2s_read_buff = (char *)calloc(i2s_read_len, sizeof(char));
     uint8_t *i2s_write_buff = (uint8_t *)calloc(i2s_write_len, sizeof(char));
@@ -299,52 +297,60 @@ void transmitter(void *pvParameters)
     // Send the start of transmission flag via nrf24
     Nrf24_send(&dev, (uint8_t *)"START");
 
-    // time counter
-    int time_counter = 0;
-
     // Start recording
     while (flash_wr_size < flash_rec_size)
     {
-        //-----------------------------------Replaced with smaller buffer-------------------------------- //
+        //-----------------------------------Capture audio into large buffer-------------------------------- //
 
-        // Read data from I2S bus, in this case, from ADC. //
-        i2s_read(I2S_CHANNEL_NUM, (void *)i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
-        // process data and scale to 8bit for I2S DAC.
-        i2s_adc_data_scale(i2s_write_buff, (uint8_t *)i2s_read_buff, i2s_read_len);
-        // i2s_write_buff needs to be the buffer that is sent via nr24l01.
-
-        //-----------------------------------Replaced with smaller buffer-------------------------------- //
-
-        //-------------------------------------Sending via nrf24---------------------------------------- //
-
-        // multiply the content of the buffer by 10 to make it more audible.
-        for (int i = 0; i < i2s_write_len; i++)
+        // record for 100ms
+        for (int wr_count = 0; wr_count < 0.01 * BYTE_RATE; wr_count += bytes_read)
         {
-            i2s_write_buff[i] *= 10;
-        }
-
-        Nrf24_send(&dev, i2s_write_buff);
-
-        if (Nrf24_isSend(&dev, 1000))
-        {
-            // ESP_LOGI(pcTaskGetName(0), "sending audio data ...");
-            // Nrf24_print_status(Nrf24_getStatus(nrf24));
+            // Read the RAW samples from the microphone
+            // Read data from I2S bus, in this case, from ADC. //
+            i2s_read(I2S_CHANNEL_NUM, (char *)i2s_read_buff, i2s_read_len, &bytes_read, 100);
 
             // Write the samples to the WAV file - is2_readraw_buff was replaced by i2s_write_buff
-            fwrite(i2s_write_buff, 1, bytes_read, f);
-            flash_wr_size += bytes_read;
-            // Log how much of the full recording has been written to the file
-            // if (flash_wr_size * 100) / flash_rec_size) is a multiple of 10
-            if (((flash_wr_size * 100) / flash_rec_size) % 10 == 0)
-            {
-                ESP_LOGI(TAG, "Written to file %d%%", (flash_wr_size * 100) / flash_rec_size);
-            }
+            fwrite(i2s_read_buff, 1, bytes_read, f);
         }
-        else
+
+        // i2s_write_buff needs to be the buffer that is sent via nr24l01.
+
+        //-----------------------------------Capture audio into large buffer------------------------------- //
+
+        //-----------------------------------Replaced with smaller buffer--------------------------------- //
+
+        // split i2s_readraw_buff into i2s_write_buff and send via nrf24
+        for (int i = 0; i < i2s_read_len; i = i + i2s_write_len)
         {
-            ESP_LOGI(pcTaskGetName(0), "sending audio failed ...");
+            for (int j = 0; j < i2s_write_len; j++)
+            {
+                i2s_write_buff[j] = i2s_read_buff[j + i] * 10;
+            }
+
+            //-------------------------------------Sending via nrf24---------------------------------------- //
+
+            Nrf24_send(&dev, i2s_write_buff);
+
+            if (Nrf24_isSend(&dev, 1000))
+            {
+                // ESP_LOGI(pcTaskGetName(0), "sending audio data ...");
+                // Nrf24_print_status(Nrf24_getStatus(nrf24));
+
+                // Log how much of the full recording has been written to the file
+                // if (flash_wr_size * 100) / flash_rec_size) is a multiple of 10
+                if (((flash_wr_size * 100) / flash_rec_size) % 10 == 0)
+                {
+                    ESP_LOGI(TAG, "Written to file %d%%", (flash_wr_size * 100) / flash_rec_size);
+                }
+            }
+            else
+            {
+                ESP_LOGI(pcTaskGetName(0), "sending audio failed ...");
+            }
+            //-------------------------------------Sending via nrf24---------------------------------------- //
         }
-        //-------------------------------------Sending via nrf24---------------------------------------- //
+
+        //-----------------------------------Replaced with smaller buffer-------------------------------- //
     }
 
     ESP_LOGI(TAG, "Recording done!");
