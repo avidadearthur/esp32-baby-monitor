@@ -5,7 +5,8 @@ To make sure we don't loose code and can get the most out of the version control
 2. Always work under dev/your_branch_name. When you've got the code you are working on functoning create a pull request and we can merge into to the dev/ branch.
 3. The master branch should only contain code that works, let's keep it like that.
 4. Commit your code often and with meaningful commits. If something goes wrong you can go back to your previous commits.
-5. Sugestions ... ?
+5. Sugestions:
+	- list the reference resoruces in your code/README file
 
 ## About The Project
 There are many great README templates available on GitHub; however, I didn't find one that really suited our needs. Let's leave this like that for now and later add more info regarding the software side of this project.
