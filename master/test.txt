@@ -1,0 +1,10 @@
+how to use:
+1. digitzied signal from ADC output is send to fast fourier transform, whcih is done in fftPeak.c
+    signal SAMPLES size (N) in fftPeak.c fft in each frame is 1024, default SAMPLING_RATE is 16,000;
+    fftw library is used to achieve faster speed and lower power consumption
+    with frequency spectrum calculated in fft, peaks can be found absed on power comparison and are saved into freuqency array
+    frequency array contains the f0 and its harmonics
+2. vowels and consonants can be distinguish in a cepstrum domain, yet as phonectics recognition is not the main goal for the project,
+    we implement a simplied version that only counts the occurance of consonants to avoid false cry detection triggered by closely related vowels
+
+3. to be optimized: FIR filter implementation
