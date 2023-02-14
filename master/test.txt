@@ -8,3 +8,6 @@ how to use:
     we implement a simplied version that only counts the occurance of consonants to avoid false cry detection triggered by closely related vowels
 
 3. to be optimized: FIR filter implementation
+4. implement the cry identification algorithm
+    by using the same logic demonstrated in labview: identifying the pitch, number of peaks, and the range
+5. integrate ZCR and STE into the algorithm as relative parameter features
