@@ -53,12 +53,11 @@ sdmmc_card_t *card;
 
 static int16_t i2s_readraw_buff[SAMPLE_SIZE];
 static uint8_t i2s_scaled_buff[SAMPLE_SIZE]; // I2S buffer scaled from 12 to 8-bit
-static uint8_t write_buff[SAMPLE_SIZE];
 size_t bytes_read;
 const int WAVE_HEADER_SIZE = 44;
 
 // xQueueHandle samples_queue;
-xQueueHandle buffer_queue;
+xQueueHandle xPointerQueue;
 
 /**
  * @brief Initializes the slot without card detect (CD) and write protect (WP) signals.
@@ -208,10 +207,7 @@ void audio_read()
         // Scale will cause some clipping, but it's ok for this example
         i2s_adc_data_scale(i2s_scaled_buff, i2s_readraw_buff, bytes_read);
         // for unit8_t in i2s_scaled_buff, send it to the queue
-        for (int i = 0; i < SAMPLE_SIZE; i++)
-        {
-            xQueueSend(buffer_queue, &i2s_scaled_buff[i], portMAX_DELAY);
-        }
+        xQueueSend(xPointerQueue, (void *)&i2s_scaled_buff, portMAX_DELAY);
     }
 }
 
@@ -249,21 +245,14 @@ void record_wav(uint32_t rec_time)
     fwrite(wav_header_fmt, 1, WAVE_HEADER_SIZE, f);
 
     xTaskCreate(audio_read, "audio_read", 1024 * 3, NULL, 2, NULL);
-
-    uint8_t rx_data;
+    // declare pointer that can point to i2s_scaled_buff
+    static uint8_t *i2s_scaled_buff_ptr;
 
     // Start recording
     while (flash_wr_size < flash_rec_size)
     {
-        // Read the samples from the queue
-        xQueueReceive(buffer_queue, &rx_data, portMAX_DELAY);
-        // add SAMPLE_SIZE rx_data elements to write_buff in a loop
-        for (int i = 0; i < SAMPLE_SIZE; i++)
-        {
-            write_buff[i] = rx_data;
-        }
-        // Write the samples to the WAV file
-        fwrite(write_buff, 1, bytes_read, f);
+        xQueueReceive(xPointerQueue, &i2s_scaled_buff_ptr, portMAX_DELAY);
+        fwrite(i2s_scaled_buff_ptr, 1, bytes_read, f);
         flash_wr_size += bytes_read;
     }
     // kill audio_read task
@@ -288,7 +277,7 @@ void adc_read_task(void *arg)
 void app_main(void)
 {
     int rec_time = 10;
-    buffer_queue = xQueueCreate(256, sizeof(uint8_t));
+    xPointerQueue = xQueueCreate(256, sizeof(&i2s_scaled_buff));
 
     ESP_LOGI(TAG, "Analog microphone recording Example start");
     // Mount the SDCard for recording the audio file
