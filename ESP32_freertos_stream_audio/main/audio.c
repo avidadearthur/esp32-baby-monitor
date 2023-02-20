@@ -54,15 +54,15 @@ void tx_task(void *arg)
     while (1)
     {
         /* Read audio using i2s and scale it down to uint8_t*/
-        i2s_read(I2S_CHANNEL_NUM, (char *)i2s_readraw_buff, sizeof(i2s_readraw_buff), &bytes_read, portMAX_DELAY);
-        color_printf(COLOR_PRINT_BLUE, "\t\ttx_task: %d bytes read", bytes_read);
-        i2s_adc_data_scale(ucArrayToSend, i2s_readraw_buff, sizeof(i2s_readraw_buff));
+        i2s_read(I2S_CHANNEL_NUM, (char *)i2s_readraw_buff, READ_BUF_SIZE_BYTES * sizeof(char), &bytes_read, portMAX_DELAY);
+
+        i2s_adc_data_scale(ucArrayToSend, i2s_readraw_buff, READ_BUF_SIZE_BYTES * sizeof(char));
 
         /* Send an array to the stream buffer, blocking for a maximum of 100ms to
         wait for enough space to be available in the stream buffer. */
         xBytesSent = xStreamBufferSend(xStreamBuffer,
                                        (void *)ucArrayToSend,
-                                       sizeof(ucArrayToSend),
+                                       READ_BUF_SIZE_BYTES * sizeof(char),
                                        xBlockTime);
 
         if (xBytesSent != sizeof(ucArrayToSend))
@@ -83,5 +83,5 @@ void tx_task(void *arg)
 void init_audio(StreamBufferHandle_t xStreamBuffer)
 {
 
-    xTaskCreate(tx_task, "tx_task", CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBuffer, 5, NULL);
+    xTaskCreate(tx_task, "tx_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBuffer, 5, NULL);
 }
