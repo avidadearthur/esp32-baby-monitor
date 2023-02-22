@@ -61,8 +61,13 @@ static const char* TAG = "espnow_mic";
 #define READ_BUF_SIZE_BYTES       (250)
 
 
+<<<<<<< HEAD
 static uint8_t* mic_read_buf = (uint8_t*) calloc(READ_BUF_SIZE_BYTES, sizeof(char));
 static uint8_t* audio_output_buf = (uint8_t*) calloc(READ_BUF_SIZE_BYTES, sizeof(char));
+=======
+static uint8_t mic_read_buf[READ_BUF_SIZE_BYTES];
+static uint8_t audio_output_buf[READ_BUF_SIZE_BYTES];
+>>>>>>> a6c003f (updated files)
 
 /**
  * @brief I2S config for using internal ADC and DAC
@@ -179,8 +184,6 @@ esp_err_t init_audio(StreamBufferHandle_t mic_stream_buf, StreamBufferHandle_t n
     xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, 4, NULL); 
     // /* thread for filling the buf for the reciever and dac */
     // xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
-    // /* adc analog voltage calibration */
-    // xTaskCreate(adc_cali_read_task, "adc_cali_read_task", 4096, NULL, 4, NULL);
 
     return ESP_OK;
 }
