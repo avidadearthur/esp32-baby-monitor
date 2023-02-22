@@ -1,0 +1,37 @@
+[1/11] Performing build step for 'bootloader'
+[1/1] cd /Users/jeffeehsiung/Desktop/Esp32/espnow/build/bootloader/esp-idf/esptool_py && /Users/jeffeehsiung/.espressif/python_env/idf5.0_py3.8_env/bin/python /Users/jeffeehsiung/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 /Users/jeffeehsiung/Desktop/Esp32/espnow/build/bootloader/bootloader.bin
+Bootloader binary size 0x6710 bytes. 0x8f0 bytes (8%) free.
+[2/9] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/main.c.obj
+In file included from /Users/jeffeehsiung/Desktop/Esp32/espnow/main/main.c:6:
+/Users/jeffeehsiung/Desktop/Esp32/espnow/main/espnow_recv.h:17:13: warning: 'espnow_wifi_init' declared 'static' but never defined [-Wunused-function]
+   17 | static void espnow_wifi_init(void);
+      |             ^~~~~~~~~~~~~~~~
+/Users/jeffeehsiung/Desktop/Esp32/espnow/main/espnow_recv.h:18:13: warning: 'espnow_send_task' declared 'static' but never defined [-Wunused-function]
+   18 | static void espnow_send_task(void* task_param);
+      |             ^~~~~~~~~~~~~~~~
+/Users/jeffeehsiung/Desktop/Esp32/espnow/main/espnow_recv.h:19:13: warning: 'init_non_volatile_storage' declared 'static' but never defined [-Wunused-function]
+   19 | static void init_non_volatile_storage(void);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jeffeehsiung/Desktop/Esp32/espnow/main/espnow_recv.h:20:18: warning: 'espnow_init' declared 'static' but never defined [-Wunused-function]
+   20 | static esp_err_t espnow_init(void);
+      |                  ^~~~~~~~~~~
+[3/9] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/espnow_recv.c.obj
+In file included from /Users/jeffeehsiung/Desktop/Esp32/espnow/main/espnow_recv.c:18:
+/Users/jeffeehsiung/Desktop/Esp32/espnow/main/espnow_recv.h:18:13: warning: 'espnow_send_task' declared 'static' but never defined [-Wunused-function]
+   18 | static void espnow_send_task(void* task_param);
+      |             ^~~~~~~~~~~~~~~~
+/Users/jeffeehsiung/Desktop/Esp32/espnow/main/espnow_recv.c:28:16: warning: 'esp_now_send_buf' defined but not used [-Wunused-variable]
+   28 | static uint8_t esp_now_send_buf[ESPNOW_MAX_SEND_BYTE];
+      |                ^~~~~~~~~~~~~~~~
+[4/9] Linking C static library esp-idf/main/libmain.a
+[5/9] Generating ld/sections.ld
+[6/9] Building C object CMakeFiles/espnow_example.elf.dir/project_elf_src_esp32.c.obj
+[7/9] Linking CXX executable espnow_example.elf
+[8/9] Generating binary image from built executable
+esptool.py v4.5
+Creating esp32 image...
+Merged 25 ELF sections
+Successfully created esp32 image.
+Generated /Users/jeffeehsiung/Desktop/Esp32/espnow/build/espnow_example.bin
+[9/9] cd /Users/jeffeehsiung/Desktop/Esp32/espnow/build/esp-idf/esptool_py && /Users/jeffeehsiung/.espressif/python_env/idf5.0_py3.8_env/bin/python /Users/jeffeehsiung/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /Users/jeffeehsiung/Desktop/Esp32/espnow/build/partition_table/partition-table.bin /Users/jeffeehsiung/Desktop/Esp32/espnow/build/espnow_example.bin
+espnow_example.bin binary size 0xb2ae0 bytes. Smallest app partition is 0x100000 bytes. 0x4d520 bytes (30%) free.
