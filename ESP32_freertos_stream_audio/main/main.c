@@ -236,7 +236,7 @@ void app_main()
     // color_printf(COLOR_PRINT_PURPLE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
 
     StreamBufferHandle_t xStreamBuffer;
-    const size_t xStreamBufferSizeBytes = 512, xTriggerLevel = 1;
+    const size_t xStreamBufferSizeBytes = 65536, xTriggerLevel = 1;
 
     /* Create a stream buffer that can hold 100 bytes and uses the
      * functions defined using the sbSEND_COMPLETED() and

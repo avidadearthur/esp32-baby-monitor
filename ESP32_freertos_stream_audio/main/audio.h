@@ -32,7 +32,7 @@
 #define NUM_CHANNELS 1 // For mono recording only!
 
 #define BIT_SAMPLE 16
-#define READ_BUF_SIZE_BYTES 128
+#define READ_BUF_SIZE_BYTES 16384
 
 /**
  * @brief This implementation looks correct for scaling 12-bit data to 8-bit data.
