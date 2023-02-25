@@ -61,8 +61,8 @@ static const char* TAG = "espnow_mic";
 #define READ_BUF_SIZE_BYTES       (250)
 
 
-static uint8_t mic_read_buf[READ_BUF_SIZE_BYTES];
-static uint8_t audio_output_buf[READ_BUF_SIZE_BYTES];
+static uint8_t* mic_read_buf = (uint8_t*) calloc(READ_BUF_SIZE_BYTES, sizeof(char));
+static uint8_t* audio_output_buf = (uint8_t*) calloc(READ_BUF_SIZE_BYTES, sizeof(char));
 
 /**
  * @brief I2S config for using internal ADC and DAC
@@ -135,32 +135,32 @@ void i2s_adc_capture_task(void* task_param)
     }
 }
 
-// /**
-//  * @brief Scale data to 8bit for data from ADC.
-//  *        Data from ADC are 12bit width by default.
-//  *        DAC can only output 8 bit data.
-//  *        Scale each 12bit ADC data to 8bit DAC data.
-//  */
-// void i2s_adc_data_scale(uint8_t * des_buff, uint8_t* src_buff, uint32_t len)
-// {
-//     uint32_t j = 0;
-//     uint32_t dac_value = 0;
-// #if (EXAMPLE_I2S_SAMPLE_BITS == 16)
-//     for (int i = 0; i < len; i += 2) {
-//         dac_value = ((((uint16_t) (src_buff[i + 1] & 0xf) << 8) | ((src_buff[i + 0]))));
-//         des_buff[j++] = 0;
-//         des_buff[j++] = dac_value * 256 / 4096;
-//     }
-// #else
-//     for (int i = 0; i < len; i += 4) {
-//         dac_value = ((((uint16_t)(src_buff[i + 3] & 0xf) << 8) | ((src_buff[i + 2]))));
-//         des_buff[j++] = 0;
-//         des_buff[j++] = 0;
-//         des_buff[j++] = 0;
-//         des_buff[j++] = dac_value * 256 / 4096;
-//     }
-// #endif
-// }
+/**
+ * @brief Scale data to 8bit for data from ADC.
+ *        Data from ADC are 12bit width by default.
+ *        DAC can only output 8 bit data.
+ *        Scale each 12bit ADC data to 8bit DAC data.
+ */
+void i2s_adc_data_scale(uint8_t * des_buff, uint8_t* src_buff, uint32_t len)
+{
+    uint32_t j = 0;
+    uint32_t dac_value = 0;
+#if (EXAMPLE_I2S_SAMPLE_BITS == 16)
+    for (int i = 0; i < len; i += 2) {
+        dac_value = ((((uint16_t) (src_buff[i + 1] & 0xf) << 8) | ((src_buff[i + 0]))));
+        des_buff[j++] = 0;
+        des_buff[j++] = dac_value * 256 / 4096;
+    }
+#else
+    for (int i = 0; i < len; i += 4) {
+        dac_value = ((((uint16_t)(src_buff[i + 3] & 0xf) << 8) | ((src_buff[i + 2]))));
+        des_buff[j++] = 0;
+        des_buff[j++] = 0;
+        des_buff[j++] = 0;
+        des_buff[j++] = dac_value * 256 / 4096;
+    }
+#endif
+}
 
 // i2s dac playback task
 void i2s_dac_playback_task(void* task_param) {
@@ -195,10 +195,10 @@ esp_err_t init_audio(StreamBufferHandle_t mic_stream_buf, StreamBufferHandle_t n
 
     /* thread for adc and filling the buf for the transmitter */
     xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, 4, NULL); 
-    /* thread for filling the buf for the reciever and dac */
-    xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
-    /* adc analog voltage calibration */
-    xTaskCreate(adc_cali_read_task, "adc_cali_read_task", 4096, NULL, 4, NULL);
+    // /* thread for filling the buf for the reciever and dac */
+    // xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
+    // /* adc analog voltage calibration */
+    // xTaskCreate(adc_cali_read_task, "adc_cali_read_task", 4096, NULL, 4, NULL);
 
     return ESP_OK;
 }
