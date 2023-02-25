@@ -20,10 +20,9 @@
 #define V_REF 1100
 
 #define I2S_COMM_MODE 0 // ADC/DAC Mode
-#define I2S_SAMPLE_RATE 44100
+#define I2S_SAMPLE_RATE 16000
 #define I2S_SAMPLE_BITS 16
-#define I2S_BUF_DEBUG 0       // enable display buffer for debug
-#define I2S_READ_LEN 16 * 128 // I2S read buffer length
+#define I2S_BUF_DEBUG 0 // enable display buffer for debugs
 #define I2S_FORMAT I2S_CHANNEL_FMT_ONLY_RIGHT
 #define I2S_CHANNEL_NUM 0              // I2S channel number
 #define I2S_ADC_UNIT ADC_UNIT_1        // I2S built-in ADC unit
@@ -32,7 +31,7 @@
 #define NUM_CHANNELS 1 // For mono recording only!
 
 #define BIT_SAMPLE 16
-#define READ_BUF_SIZE_BYTES 16384
+#define READ_BUF_SIZE_BYTES 250
 
 /**
  * @brief This implementation looks correct for scaling 12-bit data to 8-bit data.

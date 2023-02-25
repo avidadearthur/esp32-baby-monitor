@@ -31,7 +31,7 @@ void app_main()
 
     /* xStreamBuffer to capture data to mic cpture task () */
 
-    const size_t xStreamBufferSizeBytes = 65536, xTriggerLevel = 1;
+    const size_t xStreamBufferSizeBytes = 512, xTriggerLevel = 1;
 
     xStreamBuffer = xStreamBufferCreate(xStreamBufferSizeBytes,
                                         xTriggerLevel);
