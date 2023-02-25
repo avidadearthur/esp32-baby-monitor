@@ -89,27 +89,10 @@ void i2s_common_config(void)
      //init ADC pad
      i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
      //init DAC pad
-     i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN); // enable both I2S built-in DAC channels L/R
+     i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN); // enable both I2S built-in DAC channels L/R, maps to DAC channel 1 on GPIO25 & GPIO26
 }
 
-// adc reading calibration task
-void adc_cali_read_task(void* task_param)
-{
-    adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(ADC1_TEST_CHANNEL, ADC_ATTEN_DB_11);
-    esp_adc_cal_characteristics_t characteristics;
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, V_REF, &characteristics);
-    while(true) {
-        uint32_t voltage;
-        vTaskDelay(200 / portTICK_PERIOD_MS);
-        // use errno to check if the adc_calibrate function is successful
-        if (esp_adc_cal_get_voltage(ADC1_TEST_CHANNEL, &characteristics, &voltage) == ESP_OK) {
-            ESP_LOGI(TAG, "%"PRIu32" mV", voltage);
-        }else{
-            ESP_LOGE(TAG, "adc_calibrate failed");
-        }
-    }
-}
+
 
 // i2s adc capture task
 void i2s_adc_capture_task(void* task_param)
@@ -118,7 +101,6 @@ void i2s_adc_capture_task(void* task_param)
     i2s_adc_enable(EXAMPLE_I2S_NUM);
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
-    // iteratively read READ_BUF_SIZE_BYTES bytes from i2s adc
     while(true){
         // read from i2s bus and use errno to check if i2s_read is successful
         if (i2s_read(EXAMPLE_I2S_NUM, (char*) mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
