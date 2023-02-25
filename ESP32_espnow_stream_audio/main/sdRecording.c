@@ -13,45 +13,19 @@
 
 #include "color_out.h"
 #include "audio.h"
+#include "sdRecording.h"
 
-/** TODO: Move to separate file .h */
-#include "driver/spi_common.h"
-#include "sdmmc_cmd.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
-#include "esp_err.h"
-#include "esp_vfs_fat.h"
-
-#include <math.h>
-#include <sys/unistd.h>
-#include <sys/stat.h>
-/** --------------------------------*/
-
-/** TODO: Move to separate file .h */
-#define SPI_MOSI_GPIO 23
-#define SPI_MISO_GPIO 19
-#define SPI_CLK_GPIO 18
-#define SPI_CS_GPIO 5
-/** --------------------------------*/
-
-/** TODO: Move to separate file .h */
-#define SPI_DMA_CHAN SPI_DMA_CH_AUTO
-#define SD_MOUNT_POINT "/sdcard"
-#define SAMPLE_SIZE (BIT_SAMPLE * 1024)
-#define BYTE_RATE (I2S_SAMPLE_RATE * (BIT_SAMPLE / 8)) * NUM_CHANNELS
-/** ------------------------------------------------------------------*/
-
-/** TODO: Move to separate file .h */
+/** TODO: Move to separate file .c */
 // When testing SD and SPI modes, keep in mind that once the card has been
 // initialized in SPI mode, it can not be reinitialized in SD mode without
 // toggling power to the card.
 sdmmc_host_t host = SDSPI_HOST_DEFAULT();
 sdmmc_card_t *card;
 const int WAVE_HEADER_SIZE = 44;
-static const char *TAG = "audio_recorder_test";
+static const char *TAG = "sdRecording.c";
 /** ------------------------------------------------------------------*/
 
-/** TODO: Move to separate file .h */
+/** TODO: Move to separate file .c */
 /**
  * @brief Initializes the slot without card detect (CD) and write protect (WP) signals.
  * It formats the card if mount fails and initializes the card. After the card has been
@@ -111,7 +85,7 @@ void mount_sdcard(void)
 }
 /** ------------------------------------------------------------------------------------------*/
 
-/** TODO: Move to separate file .h */
+/** TODO: Move to separate file .c */
 /**
  * @brief Generates the header for the WAV file that is going to be stored in the SD card.
  * See this for reference: http://soundfile.sapp.org/doc/WaveFormat/.
@@ -141,7 +115,7 @@ void generate_wav_header(char *wav_header, uint32_t wav_size, uint32_t sample_ra
 }
 /** ------------------------------------------------------------------------------------------*/
 
-void rx_task(void *arg)
+void rec_task(void *arg)
 {
     /** TODO: Move to separate function*/
     mount_sdcard();
@@ -182,9 +156,9 @@ void rx_task(void *arg)
     size_t xReceivedBytes;
     const TickType_t xBlockTime = pdMS_TO_TICKS(20);
 
-    StreamBufferHandle_t xStreamBuffer = (StreamBufferHandle_t)arg;
+    StreamBufferHandle_t xStreamBufferRec = (StreamBufferHandle_t)arg;
 
-    color_printf(COLOR_PRINT_GREEN, "\t\ttx_task: starting to listen");
+    color_printf(COLOR_PRINT_GREEN, "\t\trec_task: starting to listen");
 
     while (flash_wr_size < flash_rec_size)
     {
@@ -192,10 +166,10 @@ void rx_task(void *arg)
         Wait in the Blocked state (so not using any CPU processing time) for a
         maximum of 100ms for the full sizeof( ucRxData ) number of bytes to be
         available. */
-        xReceivedBytes = xStreamBufferReceive(xStreamBuffer,
+        xReceivedBytes = xStreamBufferReceive(xStreamBufferRec,
                                               (void *)ucRxData,
                                               READ_BUF_SIZE_BYTES * sizeof(char),
-                                              xBlockTime);
+                                              xBlockTime * 2);
 
         if (xReceivedBytes > 0)
         {
@@ -208,6 +182,12 @@ void rx_task(void *arg)
             flash_wr_size += xReceivedBytes;
             // Log the amount of bytes and the percentage of the recording
             ESP_LOGI(TAG, "Wrote %d %d/%d bytes to file - %d%%", xReceivedBytes, flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
+        }
+        else
+        {
+            /* The call to xStreamBufferReceive() timed out before any data was
+            available. */
+            color_printf(COLOR_PRINT_RED, "\t\rec_task: notify timeout");
         }
     }
     ESP_LOGI(TAG, "Recording done!");
@@ -224,38 +204,8 @@ void rx_task(void *arg)
 }
 /** --------------------------------------------------------------------------------------------------*/
 
-void app_main()
+void init_recording(StreamBufferHandle_t xStreamBufferRec)
 {
-
-    color_printf(COLOR_PRINT_PURPLE, "start ESP32");
-    // color_printf(COLOR_PRINT_PURPLE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
-
-    StreamBufferHandle_t xStreamBuffer;
-    const size_t xStreamBufferSizeBytes = 65536, xTriggerLevel = 1;
-
-    /* Create a stream buffer that can hold 100 bytes and uses the
-     * functions defined using the sbSEND_COMPLETED() and
-     * sbRECEIVE_COMPLETED() macros as send and receive completed
-     * callback functions. The memory used to hold both the stream
-     * buffer structure and the data in the stream buffer is
-     * allocated dynamically. */
-    xStreamBuffer = xStreamBufferCreate(xStreamBufferSizeBytes,
-                                        xTriggerLevel);
-    if (xStreamBuffer == NULL)
-    {
-        /* There was not enough heap memory space available to create the
-        stream buffer. */
-        color_printf(COLOR_PRINT_RED, "app_main: fail to create xStreamBuffer");
-    }
-    else
-    {
-        /* The stream buffer was created successfully and can now be used. */
-        color_printf(COLOR_PRINT_PURPLE, "app_main: created xStreamBuffer successfully");
-    }
-
-    color_printf(COLOR_PRINT_PURPLE, "app_main: creating two tasks");
-    init_audio(xStreamBuffer);
-    xTaskCreate(rx_task, "rx_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBuffer, 5, NULL);
-
-    color_printf(COLOR_PRINT_PURPLE, "end of main");
+    ESP_LOGI(TAG, "Starting recording task");
+    xTaskCreate(rec_task, "rec_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferRec, 5, NULL);
 }
