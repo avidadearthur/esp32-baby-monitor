@@ -4,6 +4,13 @@
 
 #include "sdkconfig.h"
 
+#include "esp_system.h"
+#include "esp_heap_caps.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/stream_buffer.h"
+
 /** TODO: Move to separate file .h */
 #include "driver/spi_common.h"
 #include "sdmmc_cmd.h"

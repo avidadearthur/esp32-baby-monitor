@@ -1,16 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
-#include "sdkconfig.h"
-
-#include "esp_system.h"
-#include "esp_heap_caps.h"
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/stream_buffer.h"
-
 #include "color_out.h"
 #include "audio.h"
 #include "sdRecording.h"
@@ -185,9 +172,10 @@ void rec_task(void *arg)
         }
         else
         {
+            /* For test purposes */
             /* The call to xStreamBufferReceive() timed out before any data was
             available. */
-            color_printf(COLOR_PRINT_RED, "\t\rec_task: notify timeout");
+            // color_printf(COLOR_PRINT_RED, "\t\rec_task: notify timeout");
         }
     }
     ESP_LOGI(TAG, "Recording done!");
