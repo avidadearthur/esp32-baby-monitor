@@ -1,0 +1,8 @@
+;	STMicroelectronics Workspace file
+
+[Version]
+Keyword=ST7Workspace-V0.7
+
+[Project0]
+Filename=..\stm8s_stdperiph_lib\project\stm8s_stdperiph_template\stvd\cosmic\stm8s105.stp
+Dependencies=
