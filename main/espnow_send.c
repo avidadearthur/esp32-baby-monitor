@@ -27,6 +27,8 @@ static const char *TAG = "espnow_send";
 static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 static uint8_t esp_now_send_buf[ESPNOW_MAX_SEND_BYTE];
 
+// define a variable to hold the packet count
+volatile uint32_t packet_count = 0;
 
 /* WiFi should start before using ESPNOW */
 static void espnow_wifi_init(void)
@@ -44,9 +46,26 @@ static void espnow_wifi_init(void)
 #endif
 }
 
+/* create a timer callback function to reset the packet count every second */
+void packet_count_reset_callback(TimerHandle_t xTimer)
+{
+    packet_count = 0;
+}
+
+// create a timer callback function to output the packet count every second
+void packet_count_output_callback(TimerHandle_t xTimer)
+{
+    ESP_LOGE(TAG, "Packet Count: %d", packet_count);
+}
+
+
 /* sender task definition */
 static void espnow_send_task(void* task_param) {
     StreamBufferHandle_t mic_stream_buf = (StreamBufferHandle_t) task_param;
+
+    // create a timer to reset the packet count every second
+    TimerHandle_t packet_count_reset_timer = xTimerCreate("Packet Count Reset Timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, packet_count_reset_callback);
+    xTimerStart(packet_count_reset_timer, 0);
 
     while (true) {
         // read from the mic stream buffer and check with errno
@@ -56,7 +75,12 @@ static void espnow_send_task(void* task_param) {
             if (err != ESP_OK) {
                 ESP_LOGE(TAG, "Error sending ESP NOW packet: %x\n", err);
             }else{
+                // increment the packet count
+                packet_count++;
                 ESP_LOGE(TAG, "esp_now_send success");
+                // create a timer to output the packet count every second
+                TimerHandle_t packet_count_output_timer = xTimerCreate("Packet Count Output Timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, packet_count_output_callback);
+                xTimerStart(packet_count_output_timer, 0);
             }
         }
         else if (num_bytes == 0) {
@@ -70,6 +94,8 @@ static void espnow_send_task(void* task_param) {
         }
     }
 }
+
+
 
 /* initialize nvm */
 static void init_non_volatile_storage(void) {

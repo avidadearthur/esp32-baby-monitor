@@ -187,3 +187,25 @@
 //     // vSemaphoreDelete(espnow_queue);
 //     esp_now_deinit();
 // }
+
+
+--- espnow_mic.c
+
+// adc reading calibration task
+void adc_cali_read_task(void* task_param)
+{
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_TEST_CHANNEL, ADC_ATTEN_DB_11);
+    esp_adc_cal_characteristics_t characteristics;
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, V_REF, &characteristics);
+    while(true) {
+        uint32_t voltage;
+        vTaskDelay(200 / portTICK_PERIOD_MS);
+        // use errno to check if the adc_calibrate function is successful
+        if (esp_adc_cal_get_voltage(ADC1_TEST_CHANNEL, &characteristics, &voltage) == ESP_OK) {
+            ESP_LOGI(TAG, "%"PRIu32" mV", voltage);
+        }else{
+            ESP_LOGE(TAG, "adc_calibrate failed");
+        }
+    }
+}

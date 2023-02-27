@@ -77,5 +77,6 @@ static void espnow_send_task(void* task_param);
 static void init_non_volatile_storage(void);
 static esp_err_t espnow_init(void);
 void init_transmit(StreamBufferHandle_t mic_stream_buf);
-
+void packet_count_reset_callback(TimerHandle_t xTimer);
+void packet_count_output_callback(TimerHandle_t xTimer);
 #endif
