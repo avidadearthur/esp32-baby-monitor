@@ -70,6 +70,7 @@ static void espnow_send_task(void* task_param) {
     while (true) {
         // read from the mic stream buffer and check with errno
         size_t num_bytes = xStreamBufferReceive(mic_stream_buf, (void*) esp_now_send_buf, sizeof(esp_now_send_buf), portMAX_DELAY);
+        printf("sizeof(esp_now_send_buf) = %d, strlen(esp_now_send_buf) = %d, ESP_NOW_MAX_SEND_BYTE*sizeof(char) = %d \n", sizeof(esp_now_send_buf), strlen(esp_now_send_buf), ESP_NOW_MAX_SEND_BYTE*sizeof(char));
         if (num_bytes > 0) {
             esp_err_t err = esp_now_send(broadcast_mac, esp_now_send_buf, sizeof(esp_now_send_buf));
             if (err != ESP_OK) {
