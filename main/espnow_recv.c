@@ -84,7 +84,6 @@ static esp_err_t espnow_init(void){
     esp_now_peer_info_t* peer = malloc(sizeof(esp_now_peer_info_t));
     if (peer == NULL) {
         ESP_LOGE(TAG, "Malloc peer information fail");
-        // vSemaphoreDelete(espnow_queue);
         esp_now_deinit();
         return ESP_FAIL;
     }

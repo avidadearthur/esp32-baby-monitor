@@ -85,7 +85,7 @@ void i2s_common_config(void)
         .intr_alloc_flags = 0, // default interrupt priority
         .dma_desc_num = 6, // number of dma descriptors, or count for adc
         .dma_frame_num = 256, // number of dma frames, or length for adc
-        .use_apll = 1, // meaning using ethernet data interface framework
+        .use_apll = false, // meaning using ethernet data interface framework
         .tx_desc_auto_clear = false, // i2s auto clear tx descriptor on underflow
         .fixed_mclk = 0, // i2s fixed MLCK clock
      };
@@ -108,13 +108,16 @@ void i2s_adc_capture_task(void* task_param)
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
     while(true){
         // read from i2s bus and use errno to check if i2s_read is successful
-        if (i2s_read(EXAMPLE_I2S_NUM, (char*) mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
+        if (i2s_read(EXAMPLE_I2S_NUM, (char*) mic_read_buf, READ_BUF_SIZE_BYTES * sizeof(char), &bytes_read, ticks_to_wait) != ESP_OK) {
             ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
         }else{
             ESP_LOGI(TAG, "Read %d bytes from i2s adc", bytes_read);
         }
+        // process data and scale to 8bit for I2S DAC.
+        i2s_adc_data_scale(audio_output_buf, mic_read_buf, READ_BUF_SIZE_BYTES * sizeof(char));
+
         // xstreambuffersend is a blocking function that sends data to the stream buffer, , use errno to check if xstreambuffersend is successful
-        if (xStreamBufferSend(mic_stream_buf, mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY) != bytes_read) {
+        if (xStreamBufferSend(mic_stream_buf, mic_read_buf, READ_BUF_SIZE_BYTES * sizeof(char), portMAX_DELAY) != bytes_read) {
             ESP_LOGE(TAG, "Error sending to mic_stream_buf: %d", errno);
         }else{
             ESP_LOGI(TAG, "Sent %d bytes to mic_stream_buf", bytes_read);
@@ -164,6 +167,15 @@ void i2s_dac_playback_task(void* task_param) {
             if (err != ESP_OK) {
                 printf("Error writing I2S: %0x\n", err);
             }
+        }
+        else if (num_bytes == 0) {
+            printf("Error reading from net stream buffer: %d\n", errno);
+            ESP_LOGE(TAG, "No data in m");
+        }
+        else {
+            printf("Other error reading from net stream: %d\n", errno);
+            // exit with error code and error message
+            exit(errno);
         }
     }
 }
