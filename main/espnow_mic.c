@@ -1,126 +1,47 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
-#include <sys/unistd.h>
-#include <sys/stat.h>
-#include "esp_log.h"
-#include "esp_err.h"
-#include "esp_system.h"
-#include "esp_vfs_fat.h"
-#include "esp_adc_cal.h"
-#include "esp_partition.h"
-#include "esp_rom_sys.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/stream_buffer.h"
-#include "driver/i2s.h"
-#include "driver/adc.h"
-#include "driver/gpio.h"
-#include "driver/spi_common.h"
-#include "sdmmc_cmd.h"
-#include "sdkconfig.h"
-#include "spi_flash_mmap.h"
+#include <stdlib.h>
 #include "espnow_mic.h"
-#include "errno.h"
 
 static const char* TAG = "espnow_mic";
 
-// analog microphone Settings - ADC1_CHANNEL_7 is GPIO35
-#define ADC1_TEST_CHANNEL (ADC1_CHANNEL_7)
-// i2s mic and adc settings
-#define V_REF   1100
-//enable record sound and save in flash
-#define RECORD_IN_FLASH_EN        (1)
-//enable replay recorded sound in flash
-#define REPLAY_FROM_FLASH_EN      (1)
-
-//i2s number for interface channel (0 or 1, 0 for mic and 1 for speaker)
-#define EXAMPLE_I2S_NUM           (0)
-//i2s sample rate
-#define EXAMPLE_I2S_SAMPLE_RATE   (16000)
-//i2s data bits
-#define EXAMPLE_I2S_SAMPLE_BITS   (16)
-//enable display buffer for debug
-#define EXAMPLE_I2S_BUF_DEBUG     (0)
-//I2S read buffer length
-#define EXAMPLE_I2S_READ_LEN      (16 * 1024)
-//I2S data format
-#define EXAMPLE_I2S_FORMAT        (I2S_CHANNEL_FMT_ONLY_RIGHT)
-//I2S channel number
-#define EXAMPLE_I2S_CHANNEL_NUM   ((EXAMPLE_I2S_FORMAT < I2S_CHANNEL_FMT_ONLY_RIGHT) ? (2) : (1))
-//I2S built-in ADC unit
-#define I2S_ADC_UNIT              ADC_UNIT_1
-//I2S built-in ADC channel GPIO36
-#define I2S_ADC_CHANNEL           ADC1_CHANNEL_0
-// I2S byte rate
-#define BYTE_RATE                 (EXAMPLE_I2S_CHANNEL_NUM * EXAMPLE_I2S_SAMPLE_RATE * EXAMPLE_I2S_SAMPLE_BITS / 8)
-// SPI DMA channel
-#define SPI_DMA_CHAN SPI_DMA_CH_AUTO
-// define max read buffer size
-#define READ_BUF_SIZE_BYTES       (250)
-
-
-<<<<<<< HEAD
-static uint8_t* mic_read_buf = (uint8_t*) calloc(READ_BUF_SIZE_BYTES, sizeof(char));
-static uint8_t* audio_output_buf = (uint8_t*) calloc(READ_BUF_SIZE_BYTES, sizeof(char));
-=======
-static uint8_t mic_read_buf[READ_BUF_SIZE_BYTES];
-static uint8_t audio_output_buf[READ_BUF_SIZE_BYTES];
->>>>>>> a6c003f (updated files)
-
-/**
- * @brief I2S config for using internal ADC and DAC
- * one time set up
- */
-void i2s_common_config(void)
-{
-     int i2s_num = EXAMPLE_I2S_NUM;
-     i2s_config_t i2s_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN | I2S_MODE_ADC_BUILT_IN, // master and rx for mic, tx for speaker, adc for internal adc
-        .sample_rate =  EXAMPLE_I2S_SAMPLE_RATE, // 16KHz for adc
-        .bits_per_sample = EXAMPLE_I2S_SAMPLE_BITS, // 16 bits for adc
-        .communication_format = I2S_COMM_FORMAT_STAND_MSB, // standard format for adc
-        .channel_format = EXAMPLE_I2S_FORMAT, // only right channel for adc
-        .intr_alloc_flags = 0, // default interrupt priority
-        .dma_desc_num = 6, // number of dma descriptors, or count for adc
-        .dma_frame_num = 256, // number of dma frames, or length for adc
-        .use_apll = false, // meaning using ethernet data interface framework
-        .tx_desc_auto_clear = false, // i2s auto clear tx descriptor on underflow
-        .fixed_mclk = 0, // i2s fixed MLCK clock
-     };
-     //install and start i2s driver
-     i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
-     //init ADC pad
-     i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
-     //init DAC pad
-     i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN); // enable both I2S built-in DAC channels L/R, maps to DAC channel 1 on GPIO25 & GPIO26
-}
-
+uint8_t* mic_read_buf;
+uint8_t* audio_output_buf;
+uint8_t* audio_input_buf;
 
 
 // i2s adc capture task
 void i2s_adc_capture_task(void* task_param)
 {
+    // get the stream buffer handle from the task parameter
     StreamBufferHandle_t mic_stream_buf = (StreamBufferHandle_t) task_param;
+
+    // enable i2s adc
     i2s_adc_enable(EXAMPLE_I2S_NUM);
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
+
+    // allocate memory for the read buffer
+    mic_read_buf = (uint8_t*) calloc(BYTE_RATE, sizeof(char)); //allocate memory with a number of bytes equal to the byte rate
+    audio_output_buf = (uint8_t*) calloc(SCALED_BYTE_RATE, sizeof(char));
+
     while(true){
         // read from i2s bus and use errno to check if i2s_read is successful
-        if (i2s_read(EXAMPLE_I2S_NUM, (char*) mic_read_buf, READ_BUF_SIZE_BYTES * sizeof(char), &bytes_read, ticks_to_wait) != ESP_OK) {
+        if (i2s_read(EXAMPLE_I2S_NUM, mic_read_buf, BYTE_RATE * sizeof(char), &bytes_read, ticks_to_wait) != ESP_OK) {
             ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
+            exit(errno);
         }else{
-            ESP_LOGI(TAG, "Read %d bytes from i2s adc", bytes_read);
+            // ESP_LOGI(TAG, "Read %d bytes from i2s adc", bytes_read);
         }
         // process data and scale to 8bit for I2S DAC.
-        i2s_adc_data_scale(audio_output_buf, mic_read_buf, READ_BUF_SIZE_BYTES * sizeof(char));
+        i2s_adc_data_scale(audio_output_buf, mic_read_buf, BYTE_RATE * sizeof(char));
 
         // xstreambuffersend is a blocking function that sends data to the stream buffer, , use errno to check if xstreambuffersend is successful
-        if (xStreamBufferSend(mic_stream_buf, mic_read_buf, READ_BUF_SIZE_BYTES * sizeof(char), portMAX_DELAY) != bytes_read) {
+        if (xStreamBufferSend(mic_stream_buf, audio_output_buf, SCALED_BYTE_RATE * sizeof(char), portMAX_DELAY) != bytes_read) {
             ESP_LOGE(TAG, "Error sending to mic_stream_buf: %d", errno);
+            exit(errno);
         }else{
-            ESP_LOGI(TAG, "Sent %d bytes to mic_stream_buf", bytes_read);
+            // ESP_LOGI(TAG, "Sent %d bytes to mic_stream_buf", bytes_read);
         }
     }
 }
@@ -154,18 +75,28 @@ void i2s_adc_data_scale(uint8_t * des_buff, uint8_t* src_buff, uint32_t len)
 
 // i2s dac playback task
 void i2s_dac_playback_task(void* task_param) {
+    // get the stream buffer handle from the task parameter
     StreamBufferHandle_t net_stream_buf = (StreamBufferHandle_t)task_param;
+
     size_t bytes_written = 0;
 
+    // allocate memory for the read buffer
+    audio_input_buf = (uint8_t*)calloc(BYTE_RATE, sizeof(char));
+
     while (true) {
-        size_t num_bytes = xStreamBufferReceive(net_stream_buf, (void*)audio_output_buf,sizeof(audio_output_buf), portMAX_DELAY);
+        // read from the stream buffer, use errno to check if xstreambufferreceive is successful
+        size_t num_bytes = xStreamBufferReceive(net_stream_buf, audio_input_buf, SCALED_BYTE_RATE * sizeof(char), portMAX_DELAY);
         if (num_bytes > 0) {
-            // //process data and scale to 8bit for I2S DAC.
-            // i2s_adc_data_scale(audio_output_buf, audio_output_buf, num_bytes);
+
+            // assert num_bytes is equal to the byte rate, if false, exit the program
+            assert(num_bytes == SCALED_BYTE_RATE * sizeof(char));
+
             // send data to i2s dac
-            esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, audio_output_buf, num_bytes, &bytes_written, portMAX_DELAY);
+            esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, audio_input_buf, num_bytes, &bytes_written, portMAX_DELAY);
             if (err != ESP_OK) {
                 printf("Error writing I2S: %0x\n", err);
+                //exit the program
+                exit(err);
             }
         }
         else if (num_bytes == 0) {
@@ -180,17 +111,10 @@ void i2s_dac_playback_task(void* task_param) {
     }
 }
 
-/* initialize configuration of mic -first */
-esp_err_t i2s_audio_init (void){
-    i2s_common_config();
-    esp_log_level_set("I2S", ESP_LOG_INFO);
-    return ESP_OK;
-}
 
 /* call the init_auidio function for starting adc and filling the buf -second */
 esp_err_t init_audio(StreamBufferHandle_t mic_stream_buf, StreamBufferHandle_t network_stream_buf){ 
     printf("initializing i2s mic\n");
-    i2s_audio_init();
 
     /* thread for adc and filling the buf for the transmitter */
     xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, 4, NULL); 
@@ -198,10 +122,4 @@ esp_err_t init_audio(StreamBufferHandle_t mic_stream_buf, StreamBufferHandle_t n
     // xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
 
     return ESP_OK;
-}
-
-
-
-
-
-    
+}    

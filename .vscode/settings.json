@@ -10,6 +10,7 @@
     "stream_buffer.h": "c",
     "stdio.h": "c",
     "espnow_recv.h": "c",
-    "netfwd": "c"
+    "netfwd": "c",
+    "stdlib.h": "c"
   }
 }

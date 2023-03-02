@@ -1,6 +1,6 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include "config.h"
 #include "espnow_mic.h"
 #include "espnow_send.h"
 #include "espnow_recv.h"
@@ -9,18 +9,23 @@ static StreamBufferHandle_t mic_stream_buf;
 static StreamBufferHandle_t network_stream_buf; // only for reciever
 
 void app_main(void) {
-    mic_stream_buf = xStreamBufferCreate(512, 1);
-    network_stream_buf = xStreamBufferCreate(512, 1);
+    mic_stream_buf = xStreamBufferCreate(BYTE_RATE, 1);
+    network_stream_buf = xStreamBufferCreate(BYTE_RATE, 1);
     
+    // initialize espnow, nvm, wifi, and i2s configuration
+    init_config();
+
+    // initialize the transmitter and audio
     init_transmit(mic_stream_buf);
     init_audio(mic_stream_buf, network_stream_buf);
-    // init_recv(network_stream_buf);
-    
-    // Loopback testing
-    // init_audio(mic_stream_buf, mic_stream_buf);
 
-    while (true) {
-        printf("Hello world!\n");
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+    // initialize the reciever and audio (only for reciever)
+    // init_recv(network_stream_buf);
+    // init_audio(mic_stream_buf, network_stream_buf);
+    
+
+    // while (true) {
+    //     printf("Hello world!\n");
+    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // }
 }
