@@ -2,7 +2,6 @@
 #include "audio.h"
 #include "sdRecording.h"
 
-/** TODO: Move to separate file .c */
 // When testing SD and SPI modes, keep in mind that once the card has been
 // initialized in SPI mode, it can not be reinitialized in SD mode without
 // toggling power to the card.
@@ -10,9 +9,10 @@ sdmmc_host_t host = SDSPI_HOST_DEFAULT();
 sdmmc_card_t *card;
 const int WAVE_HEADER_SIZE = 44;
 static const char *TAG = "sdRecording.c";
-/** ------------------------------------------------------------------*/
 
-/** TODO: Move to separate file .c */
+TaskHandle_t readTaskHandle;
+TaskHandle_t writeTaskHandle;
+
 /**
  * @brief Initializes the slot without card detect (CD) and write protect (WP) signals.
  * It formats the card if mount fails and initializes the card. After the card has been
@@ -70,9 +70,7 @@ void mount_sdcard(void)
 
     sdmmc_card_print_info(stdout, card); // Card has been initialized, print its properties
 }
-/** ------------------------------------------------------------------------------------------*/
 
-/** TODO: Move to separate file .c */
 /**
  * @brief Generates the header for the WAV file that is going to be stored in the SD card.
  * See this for reference: http://soundfile.sapp.org/doc/WaveFormat/.
@@ -100,16 +98,17 @@ void generate_wav_header(char *wav_header, uint32_t wav_size, uint32_t sample_ra
 
     memcpy(wav_header, set_wav_header, sizeof(set_wav_header));
 }
-/** ------------------------------------------------------------------------------------------*/
 
-void rec_task(void *arg)
+void write_task(void *arg)
 {
+    ESP_LOGI(TAG, "Starting recording task");
+
     /** TODO: Move to separate function*/
     mount_sdcard();
 
     // Use POSIX and C standard library functions to work with files.
     int flash_wr_size = 0;
-    int rec_time = 10; // seconds
+    int rec_time = 5; // seconds
 
     char wav_header_fmt[WAVE_HEADER_SIZE];
 
@@ -137,7 +136,6 @@ void rec_task(void *arg)
 
     // Write the header to the WAV file
     fwrite(wav_header_fmt, 1, WAVE_HEADER_SIZE, f);
-    /** -------------------------------------------------------*/
 
     uint8_t *ucRxData = (uint8_t *)calloc(READ_BUF_SIZE_BYTES, sizeof(char));
     size_t xReceivedBytes;
@@ -187,13 +185,88 @@ void rec_task(void *arg)
     ESP_LOGI(TAG, "Card unmounted");
     // Deinitialize the bus after all devices are removed
     spi_bus_free(host.slot);
+
     // delete task after recording
     vTaskDelete(NULL);
 }
-/** --------------------------------------------------------------------------------------------------*/
 
-void init_recording(StreamBufferHandle_t xStreamBufferRec)
+void read_task(void *arg)
 {
-    ESP_LOGI(TAG, "Starting recording task");
-    xTaskCreate(rec_task, "rec_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferRec, 5, NULL);
+    // Open the WAV file
+    // Cange the file name here!
+    f = fopen(SD_MOUNT_POINT "/record.wav", "r");
+    if (f == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open file for reading");
+        vTaskDelete(NULL);
+    }
+
+    // Skip the header from the WAV file
+    fseek(f, WAVE_HEADER_SIZE, SEEK_SET);
+
+    // Read the WAV file and send it to xStreamBufferNet
+    size_t bytes_read;
+    size_t xBytesSent;
+    // clear ucRxData
+    memset(ucRxData, 0, READ_BUF_SIZE_BYTES);
+
+    // total bytes read
+    int total_bytes_read = 0;
+
+    StreamBufferHandle_t xStreamBuffer = (StreamBufferHandle_t)arg;
+
+    while (1)
+    {
+        // Read the WAV file
+        bytes_read = fread(ucRxData, 1, READ_BUF_SIZE_BYTES, f);
+        if (bytes_read > 0)
+        {
+            /* !!! When testing with one device this stream should be fed back to the esp32 DAC.
+            When using two devices this stream should go to the sender.c module*/
+            xBytesSent = xStreamBufferSend(xStreamBuffer,
+                                           (void *)ucRxData,
+                                           READ_BUF_SIZE_BYTES * sizeof(char),
+                                           portMAX_DELAY);
+            if (xBytesSent > 0)
+            {
+                total_bytes_read += bytes_read;
+                ESP_LOGI(TAG, "Read %d %d/%d bytes from file - %d%%", xBytesSent, total_bytes_read, flash_rec_size, (total_bytes_read * 100) / flash_rec_size);
+            }
+        }
+        else
+        {
+            // Close the file
+            fclose(f);
+            ESP_LOGI(TAG, "File read done!");
+            break;
+        }
+    }
+
+    // All done, unmount partition and disable SPI peripheral
+    esp_vfs_fat_sdcard_unmount(SD_MOUNT_POINT, card);
+    ESP_LOGI(TAG, "Card unmounted");
+    // Deinitialize the bus after all devices are removed
+    spi_bus_free(host.slot);
+    // delete task after recording
+    vTaskDelete(NULL);
 }
+
+void init_recording_task(StreamBufferHandle_t xStreamBufferRec)
+{
+    xTaskCreate(write_task, "write_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferRec, 5, &writeTaskHandle);
+}
+
+// This task can write into a buffer that will be read in a playback function in audio.c, in sender.c
+// or in the dsp.c module
+void init_reading_task(StreamBufferHandle_t xStreamBufferRead)
+{
+    xTaskCreate(read_task, "read_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferRead, 5, &readTaskHandle);
+}
+
+void suspend_recording() { vTaskSuspend(writeTaskHandle); }
+
+void resume_recording() { vTaskResume(writeTaskHandle); }
+
+void suspend_reading() { vTaskSuspend(readTaskHandle); }
+
+void resume_reding() { vTaskResume(readTaskHandle); }

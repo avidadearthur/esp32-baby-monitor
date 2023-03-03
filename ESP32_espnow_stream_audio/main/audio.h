@@ -33,6 +33,12 @@
 #define BIT_SAMPLE 16
 #define READ_BUF_SIZE_BYTES 250
 
+// speaker I2S constants for playing audio
+// Speaker I2S constants
+#define SPEAKER_I2S_PORT (I2S_NUM_1)
+
+void i2s_init(void);
+
 /**
  * @brief This implementation looks correct for scaling 12-bit data to 8-bit data.
  * The implementation first extracts the 12-bit value from the input buffer,
@@ -48,4 +54,14 @@ void i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len);
 
 void tx_task(void *arg);
 
-void init_audio(StreamBufferHandle_t xStreamBuffer);
+void init_audio_capture_task(StreamBufferHandle_t xStreamBufferMic, StreamBufferHandle_t xStreamBufferRecMic);
+
+void init_audio_playback_task(StreamBufferHandle_t network_stream_buf);
+
+void suspend_audio_capture();
+
+void resume_audio_capture();
+
+void suspend_audio_playback();
+
+void resume_audio_playback();
