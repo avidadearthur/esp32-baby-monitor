@@ -20,8 +20,7 @@ void espnow_wifi_init(void)
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK( esp_wifi_set_mode(ESPNOW_WIFI_MODE) );
     ESP_ERROR_CHECK( esp_wifi_start());
-    // set the fix rate to 6Mbps
-    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_6M));
+    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_2M_S));
 
 #if CONFIG_ESPNOW_ENABLE_LONG_RANGE
     ESP_ERROR_CHECK( esp_wifi_set_protocol(ESPNOW_WIFI_IF, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR) );
@@ -67,7 +66,7 @@ void i2s_common_config(void)
         .intr_alloc_flags = 0, // default interrupt priority
         .dma_desc_num = 6, // number of dma descriptors, or count for adc
         .dma_frame_num = 256, // number of dma frames, or length for adc
-        .use_apll = 1, // use apll for adc
+        .use_apll = false, // use apll for adc. if false, peripheral clock is derived and used for better wifi transmission performance
         .tx_desc_auto_clear = false, // i2s auto clear tx descriptor on underflow
         .fixed_mclk = 0, // i2s fixed MLCK clock
      };
@@ -90,12 +89,6 @@ void i2s_common_config(void)
 //     .data_in_num = I2S_PIN_NO_CHANGE
 // };
 
-// initialize i2s for speaker
-// void i2s_speaker_init(void)
-// {
-//     i2s_driver_install(EXAMPLE_I2S_NUM, &i2s_config, 0, NULL);
-//     i2s_set_pin(EXAMPLE_I2S_NUM, &i2s_spk_pin_config);
-// }
 
 /* initialized espnow */
 esp_err_t espnow_init(void){
@@ -134,5 +127,6 @@ void init_config(void){
     espnow_wifi_init();
     espnow_init();
     i2s_common_config();
+    // i2s_set_pin(EXAMPLE_I2S_NUM, &i2s_spk_pin_config); // only for reciever
     esp_log_level_set("I2S", ESP_LOG_INFO);
 }

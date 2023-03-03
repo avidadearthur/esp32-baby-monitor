@@ -25,7 +25,7 @@ void espnow_recv_task(const uint8_t* mac_addr, const uint8_t* data, int len) {
 
 /* initialize reciever */
 void init_recv(StreamBufferHandle_t net_stream_buf){
-    printf("Init transport!\n");
+    printf("Init recieve!\n");
     network_stream_buf = net_stream_buf;
 }
 
