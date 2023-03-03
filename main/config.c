@@ -65,6 +65,24 @@ void i2s_common_config(void)
      i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN); // enable both I2S built-in DAC channels L/R, maps to DAC channel 1 on GPIO25 & GPIO26
 }
 
+/** configuring i2s pinout for speaker only 
+ * https://docs.espressif.com/projects/esp-idf/en/v4.4.2/esp32s3/api-reference/peripherals/i2s.html
+ * https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
+*/
+static const i2s_pin_config_t i2s_spk_pin_config = {
+    .bck_io_num = 4,
+    .ws_io_num = 5,
+    .data_out_num = 18,
+    .data_in_num = I2S_PIN_NO_CHANGE
+};
+
+// initialize i2s for speaker
+void i2s_speaker_init(void)
+{
+    i2s_driver_install(EXAMPLE_I2S_NUM, &i2s_config, 0, NULL);
+    i2s_set_pin(EXAMPLE_I2S_NUM, &i2s_spk_pin_config);
+}
+
 /* initialized espnow */
 esp_err_t espnow_init(void){
 
