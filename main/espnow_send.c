@@ -26,6 +26,7 @@ void espnow_send_task(void* task_param) {
 
     // declare a counter to count the packets sent
     int packet_count = 0;
+    int packet_loss = 0;
 
     while (true) {
         // create a local timer to
@@ -35,9 +36,10 @@ void espnow_send_task(void* task_param) {
         if (num_bytes > 0) {
             esp_err_t err = esp_now_send(broadcast_mac, esp_now_send_buf, sizeof(esp_now_send_buf));
             if (err != ESP_OK) {
-                ESP_LOGE(TAG, "Error sending ESP NOW packet: %x\n", err);
+                // ESP_LOGE(TAG, "Error sending ESP NOW packet: %x\n", err);
+                packet_loss++;
                 /* Delay a while before sending the next data. */
-                vTaskDelay(CONFIG_ESPNOW_SEND_DELAY/(5*portTICK_PERIOD_MS));
+                // vTaskDelay(CONFIG_ESPNOW_SEND_DELAY/(5*portTICK_PERIOD_MS));
                 // exit(err);
             }else{
                 packet_count++;
@@ -55,10 +57,12 @@ void espnow_send_task(void* task_param) {
         }
         // check if the timer has reached 1 second
         if (time(NULL) - start_time >= 1) {
-            // print the number of packets sent in the last second
+            // print the number of packets sent and loss in the last second
             printf("Packets sent in last second: %d \n", packet_count);
+            printf("Packets lost in last second: %d \n", packet_loss);
             // reset the packet count
             packet_count = 0;
+            packet_loss = 0;
             // reset the timer
             start_time = time(NULL);
         }

@@ -79,10 +79,8 @@
 #define I2S_ADC_UNIT              ADC_UNIT_1
 //I2S built-in ADC channel GPIO36
 #define I2S_ADC_CHANNEL           ADC1_CHANNEL_0
-// I2S byte rate
+// I2S byte rate is 16bit * 1ch * 16000Hz / 8bit = 32000
 #define BYTE_RATE                 (EXAMPLE_I2S_CHANNEL_NUM * EXAMPLE_I2S_SAMPLE_RATE * EXAMPLE_I2S_SAMPLE_BITS / 8)
-// I2S sclaed byte rate
-#define SCALED_BYTE_RATE          (BYTE_RATE *3/2)
 // SPI DMA channel
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
 // define max read buffer size

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "config.h"
 #include "espnow_recv.h"
+#include "esp_private/wifi.h"
 
 static const char* TAG = "espnow_mic";
 static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
@@ -13,10 +14,14 @@ void espnow_wifi_init(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    cfg.ampdu_rx_enable = 0;
+    cfg.ampdu_tx_enable = 0;
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK( esp_wifi_set_mode(ESPNOW_WIFI_MODE) );
     ESP_ERROR_CHECK( esp_wifi_start());
+    // set the fix rate to 6Mbps
+    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_6M));
 
 #if CONFIG_ESPNOW_ENABLE_LONG_RANGE
     ESP_ERROR_CHECK( esp_wifi_set_protocol(ESPNOW_WIFI_IF, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR) );
@@ -40,6 +45,15 @@ void init_non_volatile_storage(void) {
 /**
  * @brief I2S config for using internal ADC and DAC
  * one time set up
+ * dma calculation reference: https://www.atomic14.com/2021/04/20/esp32-i2s-dma-buf-len-buf-count.html
+ * bit_per_sample: 16 bits for adc
+ * num_of_channels: 1 for adc
+ * dma_desc_num: 6 for adc
+ * dma_frame_num: 256 for adc
+ * sample_rate: 16000 for adc
+ * mic buffer size minumum: sample_rate * num_of_channels * worst_case_processing_time (150ms = 0.15s) = 16000 * 1 * 0.15 = 2400 
+ * spk buffer size mimimum: sample_rate * num_of_channels * worst_case_processing_time (150ms = 0.15s) = 16000 * 2 * 0.15 = 4800
+ * realistic cap is 100KB = bit_per_sample * num_of_channels * num_of_dma_descriptors * num_of_dma_frames / 8
  */
 void i2s_common_config(void)
 {
