@@ -1,5 +1,30 @@
 #include "audio.h"
 
+StreamBufferHandle_t xStreamBufferNetwork;
+
+TaskHandle_t audioCaptureTaskHandle;
+TaskHandle_t audioPlayBackTaskHandle;
+
+void suspend_audio_capture()
+{
+    vTaskSuspend(audioCaptureTaskHandle);
+}
+
+void resume_audio_capture()
+{
+    vTaskResume(audioCaptureTaskHandle);
+}
+
+void suspend_audio_playback()
+{
+    vTaskSuspend(audioPlayBackTaskHandle);
+}
+
+void resume_audio_playback()
+{
+    vTaskResume(audioPlayBackTaskHandle);
+}
+
 static void init_mic()
 {
     int i2s_num = I2S_COMM_MODE;
@@ -18,6 +43,7 @@ static void init_mic()
     // Call driver installation function and adc pad.
     ESP_ERROR_CHECK(i2s_driver_install(i2s_num, &i2s_config, 0, NULL));
     ESP_ERROR_CHECK(i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL));
+    ESP_ERROR_CHECK(i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN));
 }
 
 void i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
@@ -33,8 +59,51 @@ void i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
     }
 }
 
-void tx_task(void *arg)
+static void audio_playback_task(void *arg)
 {
+    // add delay to allow the task to be blocked
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+
+    // disable i2s_adc. No need to init speaker because it has already been done in init_mic()
+    //
+
+    /* Network transmission simulation */
+    uint8_t *ucRxData = (uint8_t *)calloc(READ_BUF_SIZE_BYTES, sizeof(char));
+    size_t xReceivedBytes;
+    // const TickType_t xBlockTime = pdMS_TO_TICKS(20);
+    const TickType_t xBlockTime = pdMS_TO_TICKS(100);
+    /*--------------------------------------------------------------------------*/
+
+    StreamBufferHandle_t xStreamBufferNet = (StreamBufferHandle_t)arg;
+
+    color_printf(COLOR_PRINT_GREEN, "\t\taudio_playback_task: starting to listen");
+
+    while (true)
+    {
+        xReceivedBytes = xStreamBufferReceive(xStreamBufferNet,
+                                              (void *)ucRxData,
+                                              READ_BUF_SIZE_BYTES * sizeof(char),
+                                              portMAX_DELAY);
+        if (xReceivedBytes > 0)
+        {
+            // write data to i2s bus
+            i2s_write(I2S_COMM_MODE, (char *)ucRxData, READ_BUF_SIZE_BYTES * sizeof(char), &xReceivedBytes, portMAX_DELAY);
+        }
+        else
+        {
+            /* For test purposes */
+            /* The call to xStreamBufferReceive() timed out before any data was
+            available. */
+            color_printf(COLOR_PRINT_RED, "\t\taudio_playback_task: notify timeout");
+        }
+    }
+}
+
+void audio_capture_task(void *arg)
+{
+    // add delay to allow the task to be blocked
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+
     init_mic();
     i2s_adc_enable(I2S_CHANNEL_NUM);
     // int16_t i2s_readraw_buff[READ_BUF_SIZE_BYTES];
@@ -49,7 +118,7 @@ void tx_task(void *arg)
 
     StreamBufferHandle_t xStreamBuffer = (StreamBufferHandle_t)arg;
 
-    color_printf(COLOR_PRINT_BLUE, "\t\ttx_task: starting transmission");
+    color_printf(COLOR_PRINT_BLUE, "\t\taudio_capture_task: starting transmission");
 
     while (1)
     {
@@ -64,24 +133,24 @@ void tx_task(void *arg)
                                        (void *)ucArrayToSend,
                                        READ_BUF_SIZE_BYTES * sizeof(char),
                                        xBlockTime);
-
-        if (xBytesSent != sizeof(ucArrayToSend))
-        {
-            /* The call to xStreamBufferSend() times out before there was enough
-            space in the buffer for the data to be written, but it did
-            successfully write xBytesSent bytes. */
-            // color_printf(COLOR_PRINT_RED, "\t\ttx_task: notify %d bytes sent", xBytesSent);
-        }
-        else
-        {
-            /* The entire array was sent to the stream buffer. */
-            // color_printf(COLOR_PRINT_BLUE, "\t\ttx_task: notify all %d bytes sent", xBytesSent);
-        }
     }
+
+    i2s_adc_disable(I2S_COMM_MODE);
+    color_printf(COLOR_PRINT_BLUE, "\t\taudio_capture_task: deleting task");
+    vTaskDelete(NULL);
 }
 
-void init_audio(StreamBufferHandle_t xStreamBuffer)
+void init_audio(StreamBufferHandle_t xStreamBuffer, StreamBufferHandle_t network_stream_buf)
 {
+    xStreamBufferNetwork = network_stream_buf;
 
-    xTaskCreate(tx_task, "tx_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBuffer, 5, NULL);
+    xTaskCreate(audio_capture_task, "audio_capture_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBuffer, 5, &audioCaptureTaskHandle);
+
+    /*In the final version, oe of the esp32 will use audio_playback_task and the other audio_capture_task*/
+    xTaskCreate(audio_playback_task, "audio_playback_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferNetwork, 5, &audioPlayBackTaskHandle);
+
+    // Suspend playback task
+    vTaskSuspend(audioPlayBackTaskHandle);
+    // Log the task handle was suspended
+    color_printf(COLOR_PRINT_BLUE, "\t\tinit_audio: audio_playback_task suspended");
 }

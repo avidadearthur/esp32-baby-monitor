@@ -51,6 +51,12 @@ const int WAVE_HEADER_SIZE = 44;
 static const char *TAG = "audio_recorder_test";
 /** ------------------------------------------------------------------*/
 
+/* Create a xStreamBuffers to handle the audio capturing and transmission */
+static StreamBufferHandle_t xStreamBufferMic;
+static StreamBufferHandle_t xStreamBufferNet;
+
+TaskHandle_t recordingTaskHandle = NULL;
+
 /** TODO: Move to separate file .h */
 /**
  * @brief Initializes the slot without card detect (CD) and write protect (WP) signals.
@@ -141,14 +147,14 @@ void generate_wav_header(char *wav_header, uint32_t wav_size, uint32_t sample_ra
 }
 /** ------------------------------------------------------------------------------------------*/
 
-void rx_task(void *arg)
+void recording_task(void *arg)
 {
     /** TODO: Move to separate function*/
     mount_sdcard();
 
     // Use POSIX and C standard library functions to work with files.
     int flash_wr_size = 0;
-    int rec_time = 10; // seconds
+    int rec_time = 5; // seconds
 
     char wav_header_fmt[WAVE_HEADER_SIZE];
 
@@ -186,6 +192,7 @@ void rx_task(void *arg)
 
     color_printf(COLOR_PRINT_GREEN, "\t\ttx_task: starting to listen");
 
+    /*------------------------------------------ Start of audio recording ---------------------------------------------------*/
     while (flash_wr_size < flash_rec_size)
     {
         /* Receive up to another sizeof( ucRxData ) bytes from the stream buffer.
@@ -209,10 +216,83 @@ void rx_task(void *arg)
             // Log the amount of bytes and the percentage of the recording
             ESP_LOGI(TAG, "Wrote %d %d/%d bytes to file - %d%%", xReceivedBytes, flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
         }
+        // if timeout, stop recording
+        else if (((flash_wr_size * 100) / flash_rec_size) > 99)
+        {
+            ESP_LOGI(TAG, "Timeout");
+            vTaskDelete(NULL);
+        }
     }
     ESP_LOGI(TAG, "Recording done!");
     fclose(f);
     ESP_LOGI(TAG, "File written on SDCard");
+
+    /* Stop transmission */
+    // suspend the audio capture task
+    suspend_audio_capture();
+    /** ---------------------------------------------------*/
+
+    /* Start playback */
+    // suspend the audio capture task
+    resume_audio_playback();
+    /** ---------------------------------------------------*/
+
+    /*------------------------------------------ End of audio recording ---------------------------------------------------*/
+    // add delay before reading the file
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    /*------------------------------------------ Start of audio reading ---------------------------------------------------*/
+
+    // Open the WAV file
+    f = fopen(SD_MOUNT_POINT "/record.wav", "r");
+    if (f == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open file for reading");
+        vTaskDelete(NULL);
+    }
+
+    // Skip the header from the WAV file
+    fseek(f, WAVE_HEADER_SIZE, SEEK_SET);
+
+    // Read the WAV file and send it to xStreamBufferNet
+    size_t bytes_read;
+    size_t xBytesSent;
+    // clear ucRxData
+    memset(ucRxData, 0, READ_BUF_SIZE_BYTES);
+
+    // total bytes read
+    int total_bytes_read = 0;
+
+    while (1)
+    {
+        // Read the WAV file
+        bytes_read = fread(ucRxData, 1, READ_BUF_SIZE_BYTES, f);
+        if (bytes_read > 0)
+        {
+            /* !!! When testing with one device this stream should be fed back to the esp32 DAC.
+            When using two devices this stream should go to the sender.c module*/
+            xBytesSent = xStreamBufferSend(xStreamBufferNet,
+                                           (void *)ucRxData,
+                                           READ_BUF_SIZE_BYTES * sizeof(char),
+                                           portMAX_DELAY);
+            if (xBytesSent > 0)
+            {
+                total_bytes_read += bytes_read;
+                ESP_LOGI(TAG, "Read %d %d/%d bytes from file - %d%%", xBytesSent, total_bytes_read, flash_rec_size, (total_bytes_read * 100) / flash_rec_size);
+            }
+        }
+        else
+        {
+            // Close the file
+            fclose(f);
+            ESP_LOGI(TAG, "File read done!");
+
+            // suspend the audio playback task
+            suspend_audio_playback();
+
+            break;
+        }
+    }
+    /*------------------------------------------ End of audio reading ---------------------------------------------------*/
 
     // All done, unmount partition and disable SPI peripheral
     esp_vfs_fat_sdcard_unmount(SD_MOUNT_POINT, card);
@@ -226,22 +306,14 @@ void rx_task(void *arg)
 
 void app_main()
 {
-
     color_printf(COLOR_PRINT_PURPLE, "start ESP32");
-    // color_printf(COLOR_PRINT_PURPLE, "free DRAM %u IRAM %u", esp_get_free_heap_size(), xPortGetFreeHeapSizeTagged(MALLOC_CAP_32BIT));
 
-    StreamBufferHandle_t xStreamBuffer;
     const size_t xStreamBufferSizeBytes = 65536, xTriggerLevel = 1;
 
-    /* Create a stream buffer that can hold 100 bytes and uses the
-     * functions defined using the sbSEND_COMPLETED() and
-     * sbRECEIVE_COMPLETED() macros as send and receive completed
-     * callback functions. The memory used to hold both the stream
-     * buffer structure and the data in the stream buffer is
-     * allocated dynamically. */
-    xStreamBuffer = xStreamBufferCreate(xStreamBufferSizeBytes,
-                                        xTriggerLevel);
-    if (xStreamBuffer == NULL)
+    /* Create a stream buffer that can hold 65536 bytes */
+    xStreamBufferMic = xStreamBufferCreate(xStreamBufferSizeBytes,
+                                           xTriggerLevel);
+    if (xStreamBufferMic == NULL)
     {
         /* There was not enough heap memory space available to create the
         stream buffer. */
@@ -253,9 +325,23 @@ void app_main()
         color_printf(COLOR_PRINT_PURPLE, "app_main: created xStreamBuffer successfully");
     }
 
+    /* Second xStreamBuffer to handle the network transmission.*/
+    xStreamBufferNet = xStreamBufferCreate(xStreamBufferSizeBytes,
+                                           xTriggerLevel);
+    if (xStreamBufferNet == NULL)
+    {
+        color_printf(COLOR_PRINT_RED, "app_main: fail to create xStreamBufferNet");
+    }
+    else
+    { /* The stream buffer was created successfully and can now be used. */
+        color_printf(COLOR_PRINT_PURPLE, "app_main: created xStreamBufferNet successfully");
+    }
+    /* ----------------------------------------------------------------------------------- */
+
     color_printf(COLOR_PRINT_PURPLE, "app_main: creating two tasks");
-    init_audio(xStreamBuffer);
-    xTaskCreate(rx_task, "rx_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBuffer, 5, NULL);
+    /* This task performs a recording to the SD card, closes the file, opens the file and plays it back*/
+    xTaskCreate(recording_task, "recording_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferMic, 10, &recordingTaskHandle);
+    init_audio(xStreamBufferMic, xStreamBufferNet);
 
     color_printf(COLOR_PRINT_PURPLE, "end of main");
 }
