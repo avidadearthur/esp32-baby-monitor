@@ -82,7 +82,7 @@
 // I2S byte rate
 #define BYTE_RATE                 (EXAMPLE_I2S_CHANNEL_NUM * EXAMPLE_I2S_SAMPLE_RATE * EXAMPLE_I2S_SAMPLE_BITS / 8)
 // I2S sclaed byte rate
-#define SCALED_BYTE_RATE          (BYTE_RATE * 3 / 2)
+#define SCALED_BYTE_RATE          (BYTE_RATE *3/2)
 // SPI DMA channel
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
 // define max read buffer size
