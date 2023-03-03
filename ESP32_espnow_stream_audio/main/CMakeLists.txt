@@ -5,4 +5,5 @@ idf_component_register(SRCS
                        "main.c"
                        "sdRecording.c"
                        "transport.c"
+                       "dsp.c"
                        INCLUDE_DIRS ".")
