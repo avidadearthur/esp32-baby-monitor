@@ -66,7 +66,7 @@ void i2s_common_config(void)
         .intr_alloc_flags = 0, // default interrupt priority
         .dma_desc_num = 6, // number of dma descriptors, or count for adc
         .dma_frame_num = 256, // number of dma frames, or length for adc
-        .use_apll = false, // use apll for adc. if false, peripheral clock is derived and used for better wifi transmission performance
+        .use_apll = false, // use apll for adc. if false, peripheral clock is derived and used for better wifi transmission performance (pending test)
         .tx_desc_auto_clear = false, // i2s auto clear tx descriptor on underflow
         .fixed_mclk = 0, // i2s fixed MLCK clock
      };
