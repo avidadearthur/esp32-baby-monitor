@@ -86,8 +86,12 @@
 // define max read buffer size
 #define READ_BUF_SIZE_BYTES       (250)
 
-
-void i2s_common_config(void);
+void espnow_wifi_init(void);
+void init_non_volatile_storage(void);
+void i2s_adc_config(void);
+void i2s_dac_config(void);
+esp_err_t espnow_init(void);
 void init_config(void);
+void deinit_config(void);
 
 #endif

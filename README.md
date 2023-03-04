@@ -44,6 +44,11 @@ The following is the hardware connection:
 |speaker(R)|DAC1|GPIO25|
 |speaker(L)|DAC2|GPIO26|
 
+### Code Initialize
+* for reciever:
+* in function void init_config() locates in config.c, uncomment i2s_dac_config(); to enable dac
+* in main.c, uncomment init_recv() and init_audio_recv();
+
 ### Configure the project
 
 ```
@@ -64,6 +69,7 @@ idf.py menuconfig
 * Set Enable Long Range Options.
   When this parameter is enabled, the ESP32 device will send data at the PHY rate of 512Kbps or 256Kbps
   then the data can be transmitted over long range between two ESP32 devices.
+
 
 ### Build and Flash
 

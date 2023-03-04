@@ -19,7 +19,7 @@ void espnow_send_task(void* task_param) {
     StreamBufferHandle_t mic_stream_buf = (StreamBufferHandle_t) task_param;
 
     // for debugging, assert the size of the esp now send buffer is equal to the max send byte
-    // assert(sizeof(esp_now_send_buf) == ESPNOW_MAX_SEND_BYTE*sizeof(char));
+    assert(sizeof(esp_now_send_buf) == ESPNOW_MAX_SEND_BYTE*sizeof(char));
 
     // create a timer to coutn the time elapsed
     time_t start_time = time(NULL);
@@ -29,11 +29,11 @@ void espnow_send_task(void* task_param) {
     int packet_loss = 0;
 
     while (true) {
-        // create a local timer to
 
         // read from the mic stream buffer until it is empty
         size_t num_bytes = xStreamBufferReceive(mic_stream_buf, esp_now_send_buf, sizeof(esp_now_send_buf), portMAX_DELAY);
         if (num_bytes > 0) {
+            assert(num_bytes == READ_BUF_SIZE_BYTES*sizeof(char));
             esp_err_t err = esp_now_send(broadcast_mac, esp_now_send_buf, sizeof(esp_now_send_buf));
             if (err != ESP_OK) {
                 // ESP_LOGE(TAG, "Error sending ESP NOW packet: %x\n", err);
