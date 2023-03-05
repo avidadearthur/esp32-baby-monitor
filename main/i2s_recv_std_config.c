@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 
+
 #include "i2s_recv_std_config.h"
 
 /** 
@@ -12,25 +13,11 @@
  * https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
 */
 
+#if(!CONFIG_IDF_TARGET_ESP32) & RECV
 /* Set 1 to allocate rx & tx channels in duplex mode on a same I2S controller, they will share the BCLK and WS signal
  * Set 0 to allocate rx & tx channels in simplex mode, these two channels will be totally separated,
  * Specifically, due to the hardware limitation, the simplex rx & tx channels can't be registered on the same controllers on ESP32 and ESP32-S2,
  * and ESP32-S2 has only one I2S controller, so it can't allocate two simplex channels */
-
-#if CONFIG_IDF_TARGET_ESP32
-    #define EXAMPLE_STD_BCLK_IO1        GPIO_NUM_4      // I2S bit clock io number
-    #define EXAMPLE_STD_WS_IO1          GPIO_NUM_5      // I2S word select io number
-    #define EXAMPLE_STD_DOUT_IO1        GPIO_NUM_18     // I2S data out io number
-    #define EXAMPLE_STD_DIN_IO1         GPIO_NUM_19     // I2S data in io number
-#else
-    #define EXAMPLE_STD_BCLK_IO1        GPIO_NUM_2      // I2S bit clock io number
-    #define EXAMPLE_STD_WS_IO1          GPIO_NUM_3      // I2S word select io number
-    #define EXAMPLE_STD_DOUT_IO1        GPIO_NUM_4      // I2S data out io number
-    #define EXAMPLE_STD_DIN_IO1         GPIO_NUM_5      // I2S data in io number
-#endif
-
-#define EXAMPLE_BUFF_SIZE               2048
-#define EXAMPLE_I2S_SAMPLE_RATE         16000
 
 void i2s_std_playback_task(void *task_param)
 {
@@ -43,14 +30,13 @@ void i2s_std_playback_task(void *task_param)
     while (true) {
                 // // read from the stream buffer, use errno to check if xstreambufferreceive is successful
         size_t num_bytes = xStreamBufferReceive(spk_read_buf, i2s_spk_buf, EXAMPLE_I2S_SAMPLE_RATE, portMAX_DELAY);
+        assert(num_bytes == EXAMPLE_I2S_READ_LEN);
 
         /* Write i2s data */
-        if (i2s_channel_write(tx_chan, i2s_spk_buf, num_bytes, &w_bytes, 1000) == ESP_OK) {
-            printf("Write Task: i2s write %d bytes\n", w_bytes);
-        } else {
-            printf("Write Task: i2s write failed\n");
+        if (i2s_channel_write(tx_chan, i2s_spk_buf, num_bytes, &w_bytes, 1000) != ESP_OK) {
+            printf("Error reading from net stream buffer: %d\n", errno);
+            ESP_LOGE(TAG, "No data in m");
         }
-        vTaskDelay(pdMS_TO_TICKS(20));
     }
     free(i2s_spk_buf);
     vTaskDelete(NULL);
@@ -96,3 +82,5 @@ void i2s_recv_std_config(void)
     /* Step 3: Enable the tx and rx channels before writing or reading data */
     ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
 }
+
+#endif

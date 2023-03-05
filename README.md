@@ -46,7 +46,7 @@ The following is the hardware connection:
 
 ### Code Initialize
 * for reciever:
-* in config.c, set macro RECV to 1
+* in config.h, set macro RECV to 1
 
 ## Pending actions
 * improve the synchronization between network packet collectoin adn filling task and dac i2s_write tasks
@@ -72,6 +72,7 @@ idf.py menuconfig
 * Set Enable Long Range Options.
   When this parameter is enabled, the ESP32 device will send data at the PHY rate of 512Kbps or 256Kbps
   then the data can be transmitted over long range between two ESP32 devices.
+* Set WIFI AMPDM TX and RX under Compoenent Configuration to false
 
 
 ### Build and Flash
@@ -91,135 +92,14 @@ See the Getting Started Guide for full steps to configure and use ESP-IDF to bui
 Here is the example of ESPNOW receiving device console output.
 
 ```
-Packet count: 0
-Packet count: 1
-Packet count: 2
-Packet count: 3
-Packet count: 4
-Packet count: 5
-Packet count: 6
-Packet count: 7
-Packet count: 8
-Packet count: 9
-Packet count: 10
-Packet count: 11
-Packet count: 12
-Packet count: 13
-Packet count: 14
-Packet count: 15
-Packet count: 16
-Packet count: 17
-Packet count: 18
-Packet count: 19
-Packet count: 20
-Packet count: 21
-Packet count: 22
-Packet count: 23
-Packet count: 24
-Packet count: 25
-Packet count: 26
-Packet count: 27
-Packet count: 28
-Packet count: 29
-Packet count: 30
-Packet count: 31
-Packet count: 32
-Packet count: 33
-Packet count: 34
-Packet count: 35
-Packet count: 36
-Packet count: 37
-Packet count: 38
-Packet count: 39
-Packet count: 40
-Packet count: 41
-Packet count: 42
-Packet count: 43
-Packet count: 44
-Packet count: 45
-Packet count: 46
-Packet count: 47
-Packet count: 48
-Packet count: 49
-Packet count: 50
-Packet count: 51
-Packet count: 52
-Packet count: 53
-Packet count: 54
-Packet count: 55
-Packet count: 56
-Packet count: 57
-Packet count: 58
-Packet count: 59
-Packet count: 60
-Packet count: 61
-Packet count: 62
-Packet count: 63
-Packet count: 64
-Packet count: 65
-Packet count: 66
-Packet count: 67
-Packet count: 68
-Packet count: 69
-Packet count: 70
-Packet count: 71
-Packet count: 72
-Packet count: 73
-Packet count: 74
-Packet count: 75
-Packet count: 76
-Packet count: 77
-Packet count: 78
-Packet count: 79
-Packet count: 80
-Packet count: 81
-Packet count: 82
-Packet count: 83
-Packet count: 84
-Packet count: 85
-Packet count: 86
-Packet count: 87
-Packet count: 88
-Packet count: 89
-Packet count: 90
-Packet count: 91
-Packet count: 92
-Packet count: 93
-Packet count: 94
-Packet count: 95
-Packet count: 96
-Packet count: 97
-Packet count: 98
-Packet count: 99
-Packet count: 100
-Packet count: 101
-Packet count: 102
-Packet count: 103
-Packet count: 104
-Packet count: 105
-Packet count: 106
-Packet count: 107
-Packet count: 108
-Packet count: 109
-Packet count: 110
-Packet count: 111
-Packet count: 112
-Packet count: 113
-Packet count: 114
-Packet count: 115
-Packet count: 116
-Packet count: 117
-Packet count: 118
-Packet count: 119
-Packet count: 120
-Packet count: 121
-Packet count: 122
-Packet count: 123
-Packet count: 124
-Packet count: 125
-Packet count: 126
-Packet count: 127
-Time taken to receive 128 frames: 1 second
+initializing i2s spk
+Received 3264 packets in 10 seconds
+Received 3392 packets in 10 seconds
+Received 3264 packets in 10 seconds
+Received 3328 packets in 10 seconds
+Received 3200 packets in 10 seconds
+Received 3328 packets in 10 seconds
+Received 3264 packets in 10 seconds
 ```
 
 Here is the example of ESPNOW sending device console output.
@@ -227,29 +107,12 @@ Here is the example of ESPNOW sending device console output.
 ```
 Init transport!
 initializing i2s mic
-Packets sent in last second: 361 
-Packets lost in last second: 221 
-Packets sent in last second: 351 
-Packets lost in last second: 222 
-Packets sent in last second: 359 
-Packets lost in last second: 223 
-Packets sent in last second: 361 
-Packets lost in last second: 220 
-Packets sent in last second: 360 
-Packets lost in last second: 219 
-Packets sent in last second: 359 
-Packets lost in last second: 217 
-Packets sent in last second: 362 
-Packets lost in last second: 220 
-Packets sent in last second: 361 
-Packets lost in last second: 221 
-Packets sent in last second: 356 
-Packets lost in last second: 217 
-Packets sent in last second: 362 
-Packets lost in last second: 220 
-Packets sent in last second: 357 
-Packets lost in last second: 224 
-Packets sent in last second: 361 
+Packets sent in last 10 second: 3350 
+Packets lost in last 10 second: 2221 
+Packets sent in last 10 second: 3347 
+Packets lost in last 10 second: 2445 
+Packets sent in last 10 second: 3407 
+Packets lost in last 10 second: 2385 
 ```
 
 ## Troubleshooting

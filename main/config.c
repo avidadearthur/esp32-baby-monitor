@@ -12,8 +12,6 @@ extern uint8_t* audio_input_buf;
 extern uint8_t* audio_output_buf;
 extern uint8_t* spk_write_buf;
 
-#define RECV 0
-
 /* WiFi should start before using ESPNOW */
 void espnow_wifi_init(void)
 {
@@ -164,7 +162,7 @@ void init_config(void){
 #endif
 
 #if CONFIG_IDF_TARGET_ESP32 & RECV
-    i2s_dac_config(EXAMPLE_I2S_NUM);
+    i2s_dac_config();
 #endif
     esp_log_level_set("I2S", ESP_LOG_INFO);
 }
@@ -173,7 +171,9 @@ void init_config(void){
 void deinit_config(void){
 
     esp_now_deinit();
+#if CONFIG_IDF_TARGET_ESP32 & (!RECV)
     i2s_adc_disable(EXAMPLE_I2S_NUM);
+#endif
 #if (CONFIG_IDF_TARGET_ESP32) & RECV
     i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
 #endif
@@ -185,8 +185,8 @@ void deinit_config(void){
     esp_wifi_deinit();
 
     free(mic_read_buf);
+    free(spk_write_buf);
     free(audio_input_buf);
     free(audio_output_buf);
-    free(spk_write_buf);
 
 }

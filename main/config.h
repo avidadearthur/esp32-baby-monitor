@@ -42,6 +42,9 @@
 #include "i2s_recv_std_config.h"
 #endif
 
+#define RECV 0
+
+
 /** wifi configuration */
 /* ESPNOW can work in both station and softap mode. It is configured in menuconfig. */
 #if CONFIG_ESPNOW_WIFI_MODE_STATION
@@ -55,7 +58,7 @@
 /** set the broadcast addr */
 #define IS_BROADCAST_ADDR(addr) (memcmp(addr, broadcast_mac, ESP_NOW_ETH_ALEN) == 0)
 
-/** i2s configuration */
+/** i2s adc/dac configuration */
 // analog microphone Settings - ADC1_CHANNEL_7 is GPIO35
 #define ADC1_TEST_CHANNEL (ADC1_CHANNEL_7)
 // i2s mic and adc settings
@@ -75,6 +78,8 @@
 #define EXAMPLE_I2S_BUF_DEBUG     (0)
 //I2S read buffer length
 #define EXAMPLE_I2S_READ_LEN      (16 * 1024)
+
+#if CONFIG_IDF_TARGET_ESP32
 //I2S data format
 #define EXAMPLE_I2S_FORMAT        (I2S_CHANNEL_FMT_ONLY_RIGHT)
 //I2S channel number
@@ -85,6 +90,8 @@
 #define I2S_ADC_CHANNEL           ADC1_CHANNEL_0
 // I2S byte rate is 16bit * 1ch * 16000Hz / 8bit = 32000
 #define BYTE_RATE                 (EXAMPLE_I2S_CHANNEL_NUM * EXAMPLE_I2S_SAMPLE_RATE * EXAMPLE_I2S_SAMPLE_BITS / 8)
+#endif
+
 // SPI DMA channel
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
 // define max read buffer size
