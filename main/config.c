@@ -12,6 +12,8 @@ extern uint8_t* audio_input_buf;
 extern uint8_t* audio_output_buf;
 extern uint8_t* spk_write_buf;
 
+#define RECV 0
+
 /* WiFi should start before using ESPNOW */
 void espnow_wifi_init(void)
 {
@@ -24,7 +26,7 @@ void espnow_wifi_init(void)
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK( esp_wifi_set_mode(ESPNOW_WIFI_MODE) );
     ESP_ERROR_CHECK( esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_MCS7_SGI));
+    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_9M));
 
 #if CONFIG_ESPNOW_ENABLE_LONG_RANGE
     ESP_ERROR_CHECK( esp_wifi_set_protocol(ESPNOW_WIFI_IF, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR) );
@@ -91,7 +93,7 @@ void i2s_dac_config(void)
         .sample_rate =  EXAMPLE_I2S_SAMPLE_RATE, // 16KHz for adc
         .bits_per_sample = EXAMPLE_I2S_SAMPLE_BITS, // 16 bits for adc
         .communication_format = I2S_COMM_FORMAT_STAND_MSB, // standard format for adc
-        .channel_format = EXAMPLE_I2S_FORMAT, // only right channel for adc
+        .channel_format = EXAMPLE_I2S_FORMAT, // only right channel same as adc
         .intr_alloc_flags = 0, // default interrupt priority
         .dma_desc_num = 4, // number of dma descriptors, or count for adc
         .dma_frame_num = 1024, // number of dma frames, or length for adc
@@ -100,29 +102,14 @@ void i2s_dac_config(void)
         .fixed_mclk = 0, // i2s fixed MLCK clock
     };
 
-    /** 
-     * for configuring i2s-speaker only 
-     * https://docs.espressif.com/projects/esp-idf/en/v4.4.2/esp32s3/api-reference/peripherals/i2s.html
-     * https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
-    */
-    i2s_pin_config_t i2s_spk_pins = {
-        .mck_io_num = I2S_PIN_NO_CHANGE,
-        .bck_io_num = 4,
-        .ws_io_num = 5,
-        .data_out_num = 18,
-        .data_in_num = I2S_PIN_NO_CHANGE
-    };
-
     //install and start i2s driver
     i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
     //init DAC pad
     i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN); // enable both I2S built-in DAC channels L/R, maps to DAC channel 1 on GPIO25 & GPIO26
     // clear the DMA buffers
-    i2s_zero_dma_buffer(I2S_NUM_0);
-    // set pinout
-    i2s_set_pin(I2S_NUM_0, &i2s_spk_pins);
-    // set clock
-    ESP_ERROR_CHECK( i2s_set_clk(I2S_NUM_0, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, I2S_CHANNEL_MONO) );
+    i2s_zero_dma_buffer(i2s_num);
+    // set clock for both dac channels
+    i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_FORMAT);
 }
 
 
@@ -166,13 +153,19 @@ void init_config(void){
     init_non_volatile_storage();
     espnow_wifi_init();
     espnow_init();
+#if CONFIG_IDF_TARGET_ESP32
     i2s_adc_config();
-
+#endif
     /**
      * for configuring i2s-speaker only
     */
-    // i2s_dac_config(EXAMPLE_I2S_NUM);
+#if (!CONFIG_IDF_TARGET_ESP32 ) & RECV
+   i2s_recv_std_config(void);
+#endif
 
+#if CONFIG_IDF_TARGET_ESP32 & RECV
+    i2s_dac_config(EXAMPLE_I2S_NUM);
+#endif
     esp_log_level_set("I2S", ESP_LOG_INFO);
 }
 
@@ -181,7 +174,12 @@ void deinit_config(void){
 
     esp_now_deinit();
     i2s_adc_disable(EXAMPLE_I2S_NUM);
+#if (CONFIG_IDF_TARGET_ESP32) & RECV
     i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
+#endif
+#if (!CONFIG_IDF_TARGET_ESP32) & RECV
+    i2s_channel_disable(tx_chan);
+#endif
     i2s_driver_uninstall(EXAMPLE_I2S_NUM);
     esp_wifi_stop();
     esp_wifi_deinit();
@@ -190,6 +188,5 @@ void deinit_config(void){
     free(audio_input_buf);
     free(audio_output_buf);
     free(spk_write_buf);
-    
 
 }

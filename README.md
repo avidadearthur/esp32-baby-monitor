@@ -46,8 +46,7 @@ The following is the hardware connection:
 
 ### Code Initialize
 * for reciever:
-* in function void init_config() locates in config.c, uncomment i2s_dac_config(); to enable dac
-* in main.c, uncomment init_recv() and init_audio_recv();
+* in config.c, set macro RECV to 1
 
 ## Pending actions
 * improve the synchronization between network packet collectoin adn filling task and dac i2s_write tasks

@@ -9,7 +9,7 @@
 
 static const char *TAG = "espnow_recv";
 
-static StreamBufferHandle_t network_stream_buf;
+StreamBufferHandle_t network_stream_buf;
 
 
 /* defining reciever task */

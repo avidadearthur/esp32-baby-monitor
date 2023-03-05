@@ -38,6 +38,10 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#if !(CONFIG_IDF_TARGET_ESP32)
+#include "i2s_recv_std_config.h"
+#endif
+
 /** wifi configuration */
 /* ESPNOW can work in both station and softap mode. It is configured in menuconfig. */
 #if CONFIG_ESPNOW_WIFI_MODE_STATION
