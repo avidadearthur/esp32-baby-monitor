@@ -12,6 +12,7 @@
     "espnow_recv.h": "c",
     "netfwd": "c",
     "stdlib.h": "c",
-    "cerrno": "c"
+    "cerrno": "c",
+    "fastconvolution.h": "c"
   }
 }
