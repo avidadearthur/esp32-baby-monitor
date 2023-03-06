@@ -31,9 +31,9 @@ void espnow_send_task(void* task_param) {
     while (true) {
 
         // read from the mic stream buffer until it is empty
-        size_t num_bytes = xStreamBufferReceive(mic_stream_buf, esp_now_send_buf, sizeof(esp_now_send_buf), portMAX_DELAY);
+        size_t num_bytes = xStreamBufferReceive(mic_stream_buf, esp_now_send_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
         if (num_bytes > 0) {
-            esp_err_t err = esp_now_send(broadcast_mac, esp_now_send_buf, sizeof(esp_now_send_buf));
+            esp_err_t err = esp_now_send(broadcast_mac, esp_now_send_buf, READ_BUF_SIZE_BYTES);
             if (err != ESP_OK) {
                 packet_loss++;
             }else{

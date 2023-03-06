@@ -68,10 +68,10 @@
 //enable replay recorded sound in flash
 #define REPLAY_FROM_FLASH_EN      (1)
 
-//i2s number for interface channel (0 or 1, 0 for mic and 1 for speaker)
+//i2s number for interface channel
 #define EXAMPLE_I2S_NUM           (0)
 //i2s sample rate
-#define EXAMPLE_I2S_SAMPLE_RATE   (16000)
+#define EXAMPLE_I2S_SAMPLE_RATE   (32000)
 //i2s data bits
 #define EXAMPLE_I2S_SAMPLE_BITS   (16)
 //enable display buffer for debug

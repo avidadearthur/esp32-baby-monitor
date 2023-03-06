@@ -24,7 +24,7 @@ void espnow_wifi_init(void)
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK( esp_wifi_set_mode(ESPNOW_WIFI_MODE) );
     ESP_ERROR_CHECK( esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_9M));
+    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_6M));
 
 #if CONFIG_ESPNOW_ENABLE_LONG_RANGE
     ESP_ERROR_CHECK( esp_wifi_set_protocol(ESPNOW_WIFI_IF, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR) );
@@ -104,10 +104,6 @@ void i2s_dac_config(void)
     i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
     //init DAC pad
     i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN); // enable both I2S built-in DAC channels L/R, maps to DAC channel 1 on GPIO25 & GPIO26
-    // clear the DMA buffers
-    i2s_zero_dma_buffer(i2s_num);
-    // set clock for both dac channels
-    i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_FORMAT);
 }
 
 
@@ -184,7 +180,9 @@ void deinit_config(void){
     esp_wifi_stop();
     esp_wifi_deinit();
 
+#if CONFIG_IDF_TARGET_ESP32 & (!RECV)
     free(mic_read_buf);
+#endif
     free(spk_write_buf);
     free(audio_input_buf);
     free(audio_output_buf);

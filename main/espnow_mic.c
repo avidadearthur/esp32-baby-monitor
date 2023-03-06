@@ -8,7 +8,7 @@
 #endif
 
 // number of frames to try and send at once (a frame is a left and right sample)
-const int NUM_FRAMES_TO_SEND = 64;
+const int NUM_FRAMES_TO_SEND = 128;
 
 static const char* TAG = "espnow_mic";
 StreamBufferHandle_t spk_stream_buf;
@@ -45,6 +45,8 @@ void i2s_adc_capture_task(void* task_param)
             deinit_config();
             exit(errno);
         }
+        // scale the data to 8 bit
+        i2s_adc_data_scale(mic_read_buf, mic_read_buf, READ_BUF_SIZE_BYTES);
         /**
          * xstreambuffersend is a blocking function that sends data to the stream buffer,
          * esp_now_send needs to send 128 packets of 250 bytes each, so the stream buffer needs to be able to hold at least 2-3 times of 128 * 250 bytes = BYTE_RATE bytes
@@ -88,21 +90,13 @@ void i2s_dac_playback_task(void* task_param) {
         // read from the stream buffer, use errno to check if xstreambufferreceive is successful
         size_t num_bytes = xStreamBufferReceive(spk_read_buf, (void*) spk_write_buf, EXAMPLE_I2S_READ_LEN, portMAX_DELAY);
         if (num_bytes > 0) {
-            
-            // allocate memory for the spk_play_buf
-            uint8_t* spk_play_buf = (uint8_t*) calloc(sizeof(char),EXAMPLE_I2S_READ_LEN);
-
             // send data to i2s dac
-            esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, spk_play_buf, num_bytes, &bytes_written, portMAX_DELAY);
+            esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, spk_write_buf, num_bytes, &bytes_written, portMAX_DELAY);
             if (err != ESP_OK) {
                 printf("Error writing I2S: %0x\n", err);
                 deinit_config();
                 exit(err);
             }
-        }
-        else if (num_bytes == 0) {
-            printf("Error reading from net stream buffer: %d\n", errno);
-            ESP_LOGE(TAG, "No data in m");
         }
         else if(num_bytes != EXAMPLE_I2S_READ_LEN) {
             printf("Error: partial reading from net stream: %d\n", errno);
@@ -156,11 +150,6 @@ void network_recv_task(void* task_param){
                 printf("Error reading from net stream buffer: %d\n", errno);
                 ESP_LOGE(TAG, "No data in m");
             }
-            else {
-                printf("Other error reading from net stream: %d\n", errno);
-                deinit_config();
-                exit(errno);
-            }
         }
         // reset the offset
         offset = 0;
@@ -180,13 +169,6 @@ void network_recv_task(void* task_param){
         if (bytes_written != EXAMPLE_I2S_READ_LEN) {
             printf("Error writing to spk stream buffer: %d\n", errno);
             ESP_LOGE(TAG, "Error writing to spk stream buffer");
-        }
-
-        time_t end_time = time(NULL);
-        if(end_time - start_time >= 10){
-            printf("Received %d packets in %lld seconds\n", packet_count, end_time - start_time);
-            packet_count = 0;
-            offset = 0;
         }
     }
     free(audio_input_buf);
