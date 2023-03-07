@@ -101,7 +101,7 @@ void i2s_dac_config(void)
     //install and start i2s driver
     i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
     //init DAC pad
-    i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN); // enable both I2S built-in DAC channels L/R, maps to DAC channel 1 on GPIO25 & GPIO26
+    i2s_set_dac_mode(I2S_DAC_CHANNEL_RIGHT_EN); // enable only I2S built-in DAC channels R, maps to GPIO25
 }
 
 

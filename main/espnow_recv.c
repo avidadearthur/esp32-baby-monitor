@@ -17,13 +17,13 @@ void espnow_recv_task(const uint8_t* mac_addr, const uint8_t* data, int len) {
     // params of espnow_recv_task is recieved from esp_now_send(mac_addr, buffer, len)
     if(xStreamBufferSend(network_stream_buf, data, EXAMPLE_I2S_READ_LEN, portMAX_DELAY) != EXAMPLE_I2S_READ_LEN){
         ESP_LOGE(TAG, "Failed to send data to network stream buffer: %d", errno);
-        exit(errno)
+        exit(errno);
     }
 }
 
 
 /* initialize reciever */
-void init_recv(StreamBufferHandle_t net_stream_buf, StreamBufferHandle_t spk_stream_buf){
+void init_recv(StreamBufferHandle_t net_stream_buf){
     printf("Init recieve!\n");
     network_stream_buf = net_stream_buf;
     if (network_stream_buf == NULL) {

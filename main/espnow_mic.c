@@ -11,7 +11,7 @@
 const int NUM_FRAMES_TO_SEND = 128;
 
 static const char* TAG = "espnow_mic";
-StreamBufferHandle_t network_stream_buf;
+StreamBufferHandle_t spk_stream_buf;
 
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
@@ -78,7 +78,7 @@ void i2s_adc_data_scale(uint8_t * des_buff, uint8_t* src_buff, uint32_t len)
 // i2s dac playback task
 void i2s_dac_playback_task(void* task_param) {
     // get the stream buffer handle from the task parameter
-    StreamBufferHandle_t spk_read_buf = (StreamBufferHandle_t)task_param;
+    spk_stream_buf = (StreamBufferHandle_t)task_param;
 
     size_t bytes_written = 0;
     spk_write_buf = (uint8_t*) calloc(sizeof(char),EXAMPLE_I2S_READ_LEN);
@@ -86,7 +86,7 @@ void i2s_dac_playback_task(void* task_param) {
 
     while (true) {
         // read from the stream buffer, use errno to check if xstreambufferreceive is successful
-        size_t num_bytes = xStreamBufferReceive(spk_read_buf, (void*) spk_write_buf, EXAMPLE_I2S_READ_LEN, portMAX_DELAY);
+        size_t num_bytes = xStreamBufferReceive(spk_stream_buf, (void*) spk_write_buf, EXAMPLE_I2S_READ_LEN, portMAX_DELAY);
         if (num_bytes > 0) {
             // send data to i2s dac
             esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, spk_write_buf, num_bytes, &bytes_written, portMAX_DELAY);
@@ -120,7 +120,6 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf){
 /* call the init_auidio function for starting adc and filling the buf -second */
 esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){ 
     printf("initializing i2s spk\n");
-    network_stream_buf = this.network_stream_buf;
     // /* thread for filling the buf for the reciever and dac */
 #ifdef CONFIG_IDF_TARGET_ESP32
     xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
