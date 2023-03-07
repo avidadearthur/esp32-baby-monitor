@@ -145,7 +145,7 @@ void init_config(void){
     init_non_volatile_storage();
     espnow_wifi_init();
     espnow_init();
-#if CONFIG_IDF_TARGET_ESP32
+#if CONFIG_IDF_TARGET_ESP32 & (!RECV)
     i2s_adc_config();
 #endif
     /**
