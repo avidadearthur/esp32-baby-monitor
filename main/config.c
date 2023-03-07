@@ -8,8 +8,6 @@
 static const char* TAG = "espnow_mic";
 static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 extern uint8_t* mic_read_buf;
-extern uint8_t* audio_input_buf;
-extern uint8_t* audio_output_buf;
 extern uint8_t* spk_write_buf;
 
 /* WiFi should start before using ESPNOW */
@@ -184,7 +182,4 @@ void deinit_config(void){
     free(mic_read_buf);
 #endif
     free(spk_write_buf);
-    free(audio_input_buf);
-    free(audio_output_buf);
-
 }

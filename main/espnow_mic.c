@@ -11,12 +11,10 @@
 const int NUM_FRAMES_TO_SEND = 128;
 
 static const char* TAG = "espnow_mic";
-StreamBufferHandle_t spk_stream_buf;
+StreamBufferHandle_t network_stream_buf;
 
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
-uint8_t* audio_input_buf;  // buffer size same as esp now send packet size
-uint8_t* audio_output_buf; // byte rate buffer size
 
 // i2s adc capture task
 void i2s_adc_capture_task(void* task_param)
@@ -109,73 +107,6 @@ void i2s_dac_playback_task(void* task_param) {
 }
 
 
-
-/**
- * function to collect data from xStreamBufferRecieve until 128 frames of 250 bytes each are collected
- * process the data by scaling it to 8 bit, save it in audio_output_buf and return the pointer to the buffer
-*/
-void network_recv_task(void* task_param){
-
-    // get the stream buffer handle from the task parameter
-    StreamBufferHandle_t net_stream_buf = (StreamBufferHandle_t)task_param;
-
-    // allocate memory for the read buffer
-    audio_input_buf = (uint8_t*)calloc(sizeof(char),READ_BUF_SIZE_BYTES);
-    assert(audio_input_buf != NULL);
-    audio_output_buf = (uint8_t*) calloc(sizeof(char),EXAMPLE_I2S_READ_LEN); // data for 2 channels
-    assert(audio_input_buf != NULL);
-
-    int packet_count = 0;
-    int offset = 0;
-
-    time_t start_time = time(NULL);
-
-    while(true){
-
-        // fill the audio_output_buf with data from the stream buffer until 128 frames of 250 bytes each are collected
-        for ( int i = 0; i < NUM_FRAMES_TO_SEND; i++) {
-            // read from the stream buffer, use errno to check if xstreambufferreceive is successful
-            size_t num_bytes = xStreamBufferReceive(net_stream_buf, (void*) audio_input_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
-            if (num_bytes > 0) {
-                // assert num_bytes is equal to the packet size, if false, exit the program
-                assert(num_bytes == READ_BUF_SIZE_BYTES);
-                // increment packet count
-                packet_count++;
-                // copy the data to the audio_output_buf at the correct offset
-                memcpy(audio_output_buf + offset, audio_input_buf, num_bytes);
-                // increment the offset
-                offset += num_bytes;
-            }
-            else if (num_bytes == 0) {
-                printf("Error reading from net stream buffer: %d\n", errno);
-                ESP_LOGE(TAG, "No data in m");
-            }
-        }
-        // reset the offset
-        offset = 0;
-
-        // print the number of packets received in the last 10 seconds
-        if(time(NULL) - start_time >= 10){
-            printf("Received %d packets in %lld seconds\n", packet_count, time(NULL) - start_time);
-            packet_count = 0;
-            start_time = time(NULL);
-        }
-
-        // // process data and scale to 8bit for I2S DAC. used prior sending will delay the process. better used on the reciever side
-        // i2s_adc_data_scale(audio_output_buf, audio_output_buf, BYTE_RATE * sizeof(char));
-
-        // send audio_output_buf to dac with stream buffer
-        size_t bytes_written = xStreamBufferSend(spk_stream_buf, (void*) audio_output_buf, EXAMPLE_I2S_READ_LEN, portMAX_DELAY);
-        if (bytes_written != EXAMPLE_I2S_READ_LEN) {
-            printf("Error writing to spk stream buffer: %d\n", errno);
-            ESP_LOGE(TAG, "Error writing to spk stream buffer");
-        }
-    }
-    free(audio_input_buf);
-    free(audio_output_buf);
-    vTaskDelete(NULL);
-}
-
 /* call the init_auidio function for starting adc and filling the buf -second */
 esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf){ 
     printf("initializing i2s mic\n");
@@ -189,14 +120,12 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf){
 /* call the init_auidio function for starting adc and filling the buf -second */
 esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){ 
     printf("initializing i2s spk\n");
-    spk_stream_buf = xStreamBufferCreate(BYTE_RATE, EXAMPLE_I2S_READ_LEN);
-    // create a thread for receiving data from the network and filling the stream buffer
-    xTaskCreate(network_recv_task, "network_recv_task", 4096, (void*) network_stream_buf, 4, NULL);
+    network_stream_buf = this.network_stream_buf;
     // /* thread for filling the buf for the reciever and dac */
 #ifdef CONFIG_IDF_TARGET_ESP32
-    xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) spk_stream_buf, 4, NULL);
+    xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
 #else
-    xTaskCreate(i2s_std_playback_task, "i2s_std_playback_task", 4096,(void*) spk_stream_buf, 4, NULL);
+    xTaskCreate(i2s_std_playback_task, "i2s_std_playback_task", 4096,(void*) network_stream_buf, 4, NULL);
 #endif
     return ESP_OK;
 }

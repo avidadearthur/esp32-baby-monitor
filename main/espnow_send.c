@@ -50,7 +50,7 @@ void espnow_send_task(void* task_param) {
             exit(errno);
         }
         // check if the timer has reached 10 second
-        if (time(NULL) - start_time >= 10) {
+        if (time(NULL) - start_time >= 1000) {
             // print the number of packets sent and loss in the last second
             printf("Packets sent in last 10 second: %d \n", packet_count);
             printf("Packets lost in last 10 second: %d \n", packet_loss);

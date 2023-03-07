@@ -19,7 +19,7 @@ void app_main(void) {
         exit(errno);
     }
 #else
-    network_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN, READ_BUF_SIZE_BYTES);
+    network_stream_buf = xStreamBufferCreate(BYTE_RATE, EXAMPLE_I2S_READ_LEN);
     // check if the stream buffer is created
     if (network_stream_buf == NULL) {
         printf("Error creating network stream buffer: %d\n", errno);
