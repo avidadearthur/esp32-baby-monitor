@@ -13,6 +13,9 @@
     "netfwd": "c",
     "stdlib.h": "c",
     "cerrno": "c",
-    "dac.h": "c"
+    "dac.h": "c",
+    "cmath": "c",
+    "complex": "c",
+    "fft.h": "c"
   }
 }
