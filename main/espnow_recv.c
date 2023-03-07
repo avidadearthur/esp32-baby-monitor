@@ -15,7 +15,7 @@ StreamBufferHandle_t network_stream_buf;
 /* defining reciever task */
 void espnow_recv_task(const uint8_t* mac_addr, const uint8_t* data, int len) {
     // params of espnow_recv_task is recieved from esp_now_send(mac_addr, buffer, len)
-    if(xStreamBufferSend(network_stream_buf, data, EXAMPLE_I2S_READ_LEN, portMAX_DELAY) != EXAMPLE_I2S_READ_LEN){
+    if(xStreamBufferSend(network_stream_buf, data, len, portMAX_DELAY) != len){
         ESP_LOGE(TAG, "Failed to send data to network stream buffer: %d", errno);
         exit(errno);
     }

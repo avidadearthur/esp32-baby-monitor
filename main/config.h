@@ -71,7 +71,7 @@
 //i2s number for interface channel
 #define EXAMPLE_I2S_NUM           (0)
 //i2s sample rate
-#define EXAMPLE_I2S_SAMPLE_RATE   (16000)
+#define EXAMPLE_I2S_SAMPLE_RATE   (44100)
 //i2s data bits
 #define EXAMPLE_I2S_SAMPLE_BITS   (16)
 //enable display buffer for debug

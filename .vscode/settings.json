@@ -13,6 +13,6 @@
     "netfwd": "c",
     "stdlib.h": "c",
     "cerrno": "c",
-    "fastconvolution.h": "c"
+    "dac.h": "c"
   }
 }
