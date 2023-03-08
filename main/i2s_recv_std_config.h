@@ -18,9 +18,10 @@
     #define EXAMPLE_STD_DOUT_IO1        GPIO_NUM_4      // I2S data out io number
     #define EXAMPLE_STD_DIN_IO1         GPIO_NUM_5      // I2S data in io number
     #define EXAMPLE_BUFF_SIZE               2048
-    #define EXAMPLE_I2S_SAMPLE_RATE         16000
-    #define EXAMPLE_I2S_CHANNEL_NUM         1
-    #define BYTE_RATE                       (EXAMPLE_I2S_SAMPLE_RATE*16*EXAMPLE_I2S_CHANNEL_NUM/8)
+    #define EXAMPLE_I2S_SAMPLE_BITS         16
+    #define EXAMPLE_I2S_SAMPLE_RATE         44100
+    #define EXAMPLE_I2S_CHANNEL_NUM         2
+    #define BYTE_RATE                       (EXAMPLE_I2S_SAMPLE_RATE*EXAMPLE_I2S_SAMPLE_BITS*EXAMPLE_I2S_CHANNEL_NUM/8)
 #endif
 
 static i2s_chan_handle_t                tx_chan;        // I2S tx channel handler

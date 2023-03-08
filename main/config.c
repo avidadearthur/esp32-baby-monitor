@@ -7,6 +7,7 @@
 
 static const char* TAG = "espnow_mic";
 static uint8_t broadcast_mac[ESP_NOW_ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+extern uint8_t* mic_read_buf;
 extern uint8_t* spk_write_buf;
 
 /* WiFi should start before using ESPNOW */
@@ -21,7 +22,7 @@ void espnow_wifi_init(void)
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK( esp_wifi_set_mode(ESPNOW_WIFI_MODE) );
     ESP_ERROR_CHECK( esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_6M));
+    ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(ESPNOW_WIFI_IF, true, WIFI_PHY_RATE_MCS7_SGI));
 
 #if CONFIG_ESPNOW_ENABLE_LONG_RANGE
     ESP_ERROR_CHECK( esp_wifi_set_protocol(ESPNOW_WIFI_IF, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR) );
@@ -48,12 +49,10 @@ void init_non_volatile_storage(void) {
  * one time set up
  * dma calculation reference: https://www.atomic14.com/2021/04/20/esp32-i2s-dma-buf-len-buf-count.html
  * bit_per_sample: 16 bits for adc
- * num_of_channels: 1 for adc
- * dma_desc_num: 6 for adc
- * dma_frame_num: 256 for adc
- * sample_rate: 16000 for adc
- * mic buffer size minumum: sample_rate * num_of_channels * worst_case_processing_time (150ms = 0.1s) = 16000 * 1 * 0.1 = 1600 
- * spk buffer size mimimum: sample_rate * num_of_channels * worst_case_processing_time (150ms = 0.1s) = 16000 * 2 * 0.15 = 3200
+ * num_of_channels: 1 for adc, 2 for speaker
+ * sample_rate: 44100 for adc
+ * mic buffer size minumum: sample_rate * num_of_channels * worst_case_processing_time (100ms = 0.1s) = 44100 * 1 * 0.1 = 4410 
+ * spk buffer size mimimum: sample_rate * num_of_channels * worst_case_processing_time (100ms = 0.1s) = 44100 * 2 * 0.1 = 8810
  * realistic cap is 100KB = bit_per_sample * num_of_channels * num_of_dma_descriptors * num_of_dma_frames / 8
  */
 void i2s_adc_dac_config(void)
@@ -64,7 +63,11 @@ void i2s_adc_dac_config(void)
         .sample_rate =  EXAMPLE_I2S_SAMPLE_RATE , // 16KHz for adc
         .bits_per_sample = EXAMPLE_I2S_SAMPLE_BITS, // 16 bits for adc
         .communication_format = I2S_COMM_FORMAT_STAND_MSB, // standard format for adc
+        #if (!RECV)
         .channel_format = EXAMPLE_I2S_FORMAT, // only right channel for adc
+        #else
+        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT, // only right channel for adc
+        #endif
         .intr_alloc_flags = 0, // default interrupt priority
         .dma_desc_num = 4, // number of dma descriptors, or count for adc
         .dma_frame_num = 512, // number of dma frames, or length for adc
@@ -75,10 +78,15 @@ void i2s_adc_dac_config(void)
      i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
      //init ADC pad
      i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
-     //init DAC pad
-     i2s_set_dac_mode(I2S_DAC_CHANNEL_RIGHT_EN); // enable only I2S built-in DAC channels R, maps to GPIO25
-     // set i2s clock source
-     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_FORMAT);
+    
+    #if RECV
+     //init DAC pad (GPIO25 & GPIO26) & mode
+     i2s_set_pin(i2s_num, NULL);
+     // set i2s clock source for i2s spk
+     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, I2S_CHANNEL_FMT_RIGHT_LEFT);
+     // set i2s sample rate for respective dac channel of i2s spk (clock source is set automatically by the function)
+     i2s_set_sample_rates(i2s_num, EXAMPLE_I2S_SAMPLE_RATE/2); 
+    #endif
 }
 #endif
 
@@ -127,7 +135,6 @@ void init_config(void){
     // get the clock rate for adc and dac
     float freq = i2s_get_clk(EXAMPLE_I2S_NUM);
     printf("i2s clock rate: %f, sample rate: %d, bits per sample: %d \n", freq, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS);
-
 #endif
     /**
      * for configuring i2s-speaker only
@@ -156,7 +163,7 @@ void deinit_config(void){
     esp_wifi_deinit();
 
 #if CONFIG_IDF_TARGET_ESP32 & (!RECV)
-    // free(mic_read_buf);
+    free(mic_read_buf);
 #endif
     free(spk_write_buf);
 }
