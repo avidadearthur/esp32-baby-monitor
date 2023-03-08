@@ -51,6 +51,15 @@ void i2s_adc_capture_task(void* task_param)
             ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, READ_BUF_SIZE_BYTES);
         }
 
+        /**
+         * xstreambuffersend to fft task
+        */
+        // #if FFT_TASK
+        // byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
+        // if (byte_sent != READ_BUF_SIZE_BYTES) {
+        //     ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, READ_BUF_SIZE_BYTES);
+        // }
+        // #endif
     }
     free(mic_read_buf);
     vTaskDelete(NULL);
@@ -126,7 +135,7 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf){
 esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){ 
     printf("initializing i2s spk\n");
     // /* thread for filling the buf for the reciever and dac */
-#ifdef CONFIG_IDF_TARGET_ESP32
+#if CONFIG_IDF_TARGET_ESP32
     xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
 #else
     xTaskCreate(i2s_std_playback_task, "i2s_std_playback_task", 4096,(void*) network_stream_buf, 4, NULL);
