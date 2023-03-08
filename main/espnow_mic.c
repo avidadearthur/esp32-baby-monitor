@@ -19,7 +19,7 @@ void i2s_adc_capture_task(void* task_param)
     // get the stream buffer handle from the task parameter
     StreamBufferHandle_t mic_stream_buf = (StreamBufferHandle_t) task_param;
 
-    uint16_t mic_read_buf[READ_BUF_SIZE_BYTES];
+    uint8_t mic_read_buf[READ_BUF_SIZE_BYTES];
     uint8_t mic_write_buf[READ_BUF_SIZE_BYTES];
 
     // enable i2s adc
@@ -42,6 +42,8 @@ void i2s_adc_capture_task(void* task_param)
         }
         // scale the data to 8 bit
         i2s_adc_data_scale(mic_write_buf, mic_read_buf, READ_BUF_SIZE_BYTES);
+        
+        mic_disp_buf((uint8_t*)mic_write_buf, READ_BUF_SIZE_BYTES);
         /**
          * xstreambuffersend is a blocking function that sends data to the stream buffer,
          * esp_now_send needs to send 128 packets of 250 bytes each, so the stream buffer needs to be able to hold at least 2-3 times of 128 * 250 bytes = BYTE_RATE bytes
@@ -50,6 +52,7 @@ void i2s_adc_capture_task(void* task_param)
         if (byte_sent != READ_BUF_SIZE_BYTES) {
             ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, READ_BUF_SIZE_BYTES);
         }
+
     }
     vTaskDelete(NULL);
     
@@ -60,7 +63,7 @@ void i2s_adc_capture_task(void* task_param)
  *        DAC can only output 8 bit data.
  *        Scale each 16bit-wide ADC data to 8bit DAC data.
  */
-void i2s_adc_data_scale(uint8_t * des_buff, uint16_t* src_buff, uint32_t len)
+void i2s_adc_data_scale(uint8_t * des_buff, uint8_t* src_buff, uint32_t len)
 {
     uint32_t j = 0;
     uint32_t dac_value = 0;
@@ -97,6 +100,7 @@ void i2s_dac_playback_task(void* task_param) {
             deinit_config();
             exit(errno);
         }
+        //mic_disp_buf ((uint8_t*)spk_write_buf, EXAMPLE_I2S_READ_LEN);
     }
     free(spk_write_buf);
     vTaskDelete(NULL);
@@ -125,3 +129,22 @@ esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){
     return ESP_OK;
 }
 
+
+// /** debug functions below */
+
+/**
+ * @brief debug buffer data
+ */
+void mic_disp_buf(uint8_t* buf, int length)
+{
+#if EXAMPLE_I2S_BUF_DEBUG
+    printf("\n=== MIC ===\n");
+    for (int i = 0; i < length; i++) {
+        printf("%02x ", buf[i]);
+        if ((i + 1) % 8 == 0) {
+            printf("\n");
+        }
+    }
+    printf("\n=== MIC ===\n");
+#endif
+}

@@ -71,7 +71,7 @@
 //i2s number for interface channel
 #define EXAMPLE_I2S_NUM           (0)
 //i2s sample rate
-#define EXAMPLE_I2S_SAMPLE_RATE   (44100)
+#define EXAMPLE_I2S_SAMPLE_RATE   (16000)
 //i2s data bits
 #define EXAMPLE_I2S_SAMPLE_BITS   (16)
 //enable display buffer for debug
@@ -99,8 +99,7 @@
 
 void espnow_wifi_init(void);
 void init_non_volatile_storage(void);
-void i2s_adc_config(void);
-void i2s_dac_config(void);
+void i2s_adc_dac_config(void);
 esp_err_t espnow_init(void);
 void init_config(void);
 void deinit_config(void);

@@ -19,6 +19,7 @@ void espnow_recv_task(const uint8_t* mac_addr, const uint8_t* data, int len) {
         ESP_LOGE(TAG, "Failed to send data to network stream buffer: %d", errno);
         exit(errno);
     }
+    recv_disp_buf((uint8_t*)data, len);
 }
 
 
@@ -31,5 +32,24 @@ void init_recv(StreamBufferHandle_t net_stream_buf){
         deinit_config();
         exit(errno);
     }
+}
+
+/** debug functions below */
+
+/**
+ * @brief debug buffer data
+ */
+void recv_disp_buf(uint8_t* buf, int length)
+{
+#if EXAMPLE_I2S_BUF_DEBUG
+    printf("\n=== RECV ===\n");
+    for (int i = 0; i < length; i++) {
+        printf("%02x ", buf[i]);
+        if ((i + 1) % 8 == 0) {
+            printf("\n");
+        }
+    }
+    printf("\n=== RECV ===\n");
+#endif
 }
 
