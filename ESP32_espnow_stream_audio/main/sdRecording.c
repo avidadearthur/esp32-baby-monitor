@@ -186,6 +186,9 @@ void write_task(void *arg)
     // Deinitialize the bus after all devices are removed
     spi_bus_free(host.slot);
 
+    // free the memory
+    free(ucRxData);
+
     // delete task after recording
     vTaskDelete(NULL);
 }
@@ -193,21 +196,28 @@ void write_task(void *arg)
 void read_task(void *arg)
 {
     // Open the WAV file
-    // Cange the file name here!
-    f = fopen(SD_MOUNT_POINT "/record.wav", "r");
+    // Change the file name here!
+    FILE *f = fopen(SD_MOUNT_POINT "/record.wav", "r");
     if (f == NULL)
     {
         ESP_LOGE(TAG, "Failed to open file for reading");
         vTaskDelete(NULL);
     }
+    // Get flash_rec_size from the header
+    fseek(f, 40, SEEK_SET);
+    uint32_t flash_rec_size;
+    fread(&flash_rec_size, 1, 4, f);
+    ESP_LOGI(TAG, "Opening file - recording size: %d", flash_rec_size);
 
     // Skip the header from the WAV file
-    fseek(f, WAVE_HEADER_SIZE, SEEK_SET);
+    fseek(f, WAVE_HEADER_SIZE - 40, SEEK_SET);
 
     // Read the WAV file and send it to xStreamBufferNet
     size_t bytes_read;
     size_t xBytesSent;
+
     // clear ucRxData
+    uint8_t *ucRxData = (uint8_t *)calloc(READ_BUF_SIZE_BYTES, sizeof(char));
     memset(ucRxData, 0, READ_BUF_SIZE_BYTES);
 
     // total bytes read
@@ -247,6 +257,10 @@ void read_task(void *arg)
     ESP_LOGI(TAG, "Card unmounted");
     // Deinitialize the bus after all devices are removed
     spi_bus_free(host.slot);
+
+    // free the memory
+    free(ucRxData);
+
     // delete task after recording
     vTaskDelete(NULL);
 }

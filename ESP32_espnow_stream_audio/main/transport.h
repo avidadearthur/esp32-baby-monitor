@@ -25,6 +25,17 @@
 
 #define CONFIG_ESPNOW_PMK "pmk1234567890123"
 #define CONFIG_ESPNOW_CHANNEL 1
-/*---------------*/
 
-void init_transport(StreamBufferHandle_t mic_stream_buf, StreamBufferHandle_t net_stream_buf, StreamBufferHandle_t rec_stream_buf);
+void init_transport();
+
+void init_sender(StreamBufferHandle_t xStreamBufferMic);
+
+void suspend_sender();
+
+void resume_sender();
+
+void init_receiver(StreamBufferHandle_t xStreamBufferNet);
+
+// void suspend_receiver();
+
+// void resume_receiver();

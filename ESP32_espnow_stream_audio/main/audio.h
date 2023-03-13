@@ -56,6 +56,8 @@ void tx_task(void *arg);
 
 void init_audio_capture_task(StreamBufferHandle_t xStreamBufferMic, StreamBufferHandle_t xStreamBufferRecMic);
 
+void init_audio_capture_net_task(StreamBufferHandle_t xStreamBufferMic, StreamBufferHandle_t xStreamBufferNet);
+
 void init_audio_playback_task(StreamBufferHandle_t network_stream_buf);
 
 void suspend_audio_capture();
