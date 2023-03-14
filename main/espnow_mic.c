@@ -54,12 +54,12 @@ void i2s_adc_capture_task(void* task_param)
         /**
          * xstreambuffersend to fft task
         */
-        // #if FFT_TASK
-        // byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
-        // if (byte_sent != READ_BUF_SIZE_BYTES) {
-        //     ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, READ_BUF_SIZE_BYTES);
-        // }
-        // #endif
+        #if FFT_TASK
+        byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
+        if (byte_sent != READ_BUF_SIZE_BYTES) {
+            ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, READ_BUF_SIZE_BYTES);
+        }
+        #endif
     }
     free(mic_read_buf);
     vTaskDelete(NULL);
@@ -98,7 +98,7 @@ void i2s_dac_playback_task(void* task_param) {
         size_t num_bytes = xStreamBufferReceive(spk_stream_buf, (void*) spk_write_buf, EXAMPLE_I2S_SAMPLE_RATE, portMAX_DELAY);
         if (num_bytes > 0) {
             // send data to i2s dac
-            esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, spk_write_buf, num_bytes, &bytes_written, portMAX_DELAY);
+            esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, spk_write_buf, EXAMPLE_I2S_SAMPLE_RATE/2, &bytes_written, portMAX_DELAY);
             if ((err != ESP_OK) & (intialized == 0)) {
                 printf("Error writing I2S: %0x\n", err);
                 deinit_config();
