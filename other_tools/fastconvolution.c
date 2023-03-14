@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h> 
-#include <fftw3.h>
+// #include <fftw3.h>
 
 #include "fastconvolution.h"
 
