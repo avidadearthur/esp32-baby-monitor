@@ -21,15 +21,15 @@ void app_main(void) {
         exit(errno);
     }
 
-    #if(!RECV) & (FFT_TASK)
-    fft_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN, 1);
-    // check if the stream buffer is created
-    if (fft_stream_buf == NULL) {
-        printf("Error creating fft stream buffer: %d\n", errno);
-        deinit_config();
-        exit(errno);
-    }
-    #endif
+    // #if(!RECV) & (FFT_TASK)
+    // fft_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN, 1);
+    // // check if the stream buffer is created
+    // if (fft_stream_buf == NULL) {
+    //     printf("Error creating fft stream buffer: %d\n", errno);
+    //     deinit_config();
+    //     exit(errno);
+    // }
+    // #endif
 
 #else
     network_stream_buf = xStreamBufferCreate(BYTE_RATE, 1);
@@ -54,9 +54,9 @@ void app_main(void) {
     // initialize the transmitter and audio
     init_transmit(mic_stream_buf);
     init_audio_trans(mic_stream_buf);
-    #if(!RECV) & (FFT_TASK)
-    init_fft(fft_stream_buf);
-    #endif
+    // #if(!RECV) & (FFT_TASK)
+    // init_fft(fft_stream_buf);
+    // #endif
 #endif
     
 }

@@ -43,7 +43,7 @@
 #endif
 
 #define RECV        0
-#define FFT_TASK    0
+// #define FFT_TASK    0
 
 /** wifi configuration */
 /* ESPNOW can work in both station and softap mode. It is configured in menuconfig. */
