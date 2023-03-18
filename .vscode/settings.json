@@ -16,6 +16,7 @@
     "dac.h": "c",
     "cmath": "c",
     "complex": "c",
-    "fft.h": "c"
+    "fft.h": "c",
+    "numeric": "c"
   }
 }
