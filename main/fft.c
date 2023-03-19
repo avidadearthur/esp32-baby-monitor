@@ -23,6 +23,7 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
   int k,m;
 
   fft_config_t *config = (fft_config_t *)malloc(sizeof(fft_config_t));
+  assert(config != NULL);
 
   // Check if the size is a power of two
   if ((size & (size-1)) != 0)  // tests if size is a power of two
@@ -34,8 +35,10 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
   config->direction = direction;
   config->size = size;
 
-  // Allocate and precompute twiddle factors
+  // Allocate and precompute twiddle factors, check with errorno
   config->twiddle_factors = (float *)malloc(2 * config->size * sizeof(float));
+  assert(config->twiddle_factors != NULL);
+
 
   float two_pi_by_n = TWO_PI / config->size;
 
@@ -44,6 +47,7 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
     config->twiddle_factors[m] = cosf(two_pi_by_n * k);    // real
     config->twiddle_factors[m+1] = sinf(two_pi_by_n * k);  // imag
   }
+  assert(config->twiddle_factors != NULL);
 
   // Allocate input buffer
   if (input != NULL)
@@ -56,6 +60,7 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
       config->input = (float *)malloc(2 * config->size * sizeof(float));
 
     config->flags |= FFT_OWN_INPUT_MEM;
+    assert(config->input != NULL);
   }
 
   if (config->input == NULL)
@@ -73,7 +78,8 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
 
     config->flags |= FFT_OWN_OUTPUT_MEM;
   }
-
+  assert(config->output != NULL);
+  
   if (config->output == NULL)
     return NULL;
 
