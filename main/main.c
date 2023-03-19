@@ -6,9 +6,13 @@
 #include "espnow_recv.h"
 #include "fftpeak.h"
 
-static StreamBufferHandle_t mic_stream_buf;
+
+#if (RECV)
 static StreamBufferHandle_t network_stream_buf; // only for reciever
+#else
+static StreamBufferHandle_t mic_stream_buf;
 static StreamBufferHandle_t fft_stream_buf; // only for transmitter
+#endif
 
 void app_main(void) {
     // deafult transmission rate of esp_now_send is 1Mbps = 125KBps, stream buffer size has to be larger than 125KBps
@@ -22,7 +26,8 @@ void app_main(void) {
     }
 
     #if(!RECV) & (FFT_TASK)
-    fft_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN, 1);
+    fft_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN, EXAMPLE_I2S_READ_LEN/16);
+    xStreamBufferSetTriggerLevel(fft_stream_buf, EXAMPLE_I2S_READ_LEN/16);
     // check if the stream buffer is created
     if (fft_stream_buf == NULL) {
         printf("Error creating fft stream buffer: %d\n", errno);
@@ -53,9 +58,9 @@ void app_main(void) {
 #if (!RECV)
     // initialize the transmitter and audio
     init_transmit(mic_stream_buf);
-    init_audio_trans(mic_stream_buf);
+    init_audio_trans(mic_stream_buf, fft_stream_buf);
     #if(!RECV) & (FFT_TASK)
-    init_fft(fft_stream_buf);
+        init_fft(fft_stream_buf);
     #endif
 #endif
     

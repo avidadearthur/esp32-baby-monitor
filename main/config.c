@@ -78,6 +78,8 @@ void i2s_adc_dac_config(void)
      i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
      //init ADC pad
      i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
+     // set i2s clock source for i2s mic
+     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_FORMAT);
     
     #if RECV
      //init DAC pad (GPIO25 & GPIO26) & mode

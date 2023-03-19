@@ -9,6 +9,7 @@
 
 static const char* TAG = "espnow_mic";
 StreamBufferHandle_t spk_stream_buf;
+StreamBufferHandle_t fft_stream_buf;
 
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
@@ -55,9 +56,9 @@ void i2s_adc_capture_task(void* task_param)
          * xstreambuffersend to fft task
         */
         #if FFT_TASK
-        byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
-        if (byte_sent != READ_BUF_SIZE_BYTES) {
-            ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, READ_BUF_SIZE_BYTES);
+        byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, EXAMPLE_I2S_READ_LEN/16, portMAX_DELAY);
+        if (byte_sent != EXAMPLE_I2S_READ_LEN/16) {
+            ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, EXAMPLE_I2S_READ_LEN/4);
         }
         #endif
     }
@@ -122,8 +123,10 @@ void i2s_dac_playback_task(void* task_param) {
 
 
 /* call the init_auidio function for starting adc and filling the buf -second */
-esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf){ 
+esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHandle_t fft_audio_buf){ 
     printf("initializing i2s mic\n");
+
+    fft_stream_buf = fft_audio_buf;
 
     /* thread for adc and filling the buf for the transmitter */
     xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, 4, NULL); 
