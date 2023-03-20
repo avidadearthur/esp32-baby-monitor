@@ -106,12 +106,8 @@ Here is the example of ESPNOW sending device console output.
 ```
 Init transport!
 initializing i2s mic
-Packets sent in last 10 second: 3350 
-Packets lost in last 10 second: 2221 
-Packets sent in last 10 second: 3347 
-Packets lost in last 10 second: 2445 
-Packets sent in last 10 second: 3407 
-Packets lost in last 10 second: 2385 
+peak 1 at frequency 0.000000 Hz with amplitude 425.175385 
+peak 2 at frequency 86.000000 Hz with amplitude 39.549194
 ```
 
 ## Troubleshooting
