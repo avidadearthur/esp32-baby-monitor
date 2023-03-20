@@ -40,6 +40,14 @@ void i2s_adc_capture_task(void* task_param)
             deinit_config();
             exit(errno);
         }
+
+        /**
+         * xstreambuffersend to fft task
+        */
+        #if FFT_TASK
+        size_t byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, (EXAMPLE_I2S_READ_LEN/16), portMAX_DELAY);
+        #endif
+
         // scale the data to 8 bit
         i2s_adc_data_scale(mic_read_buf, mic_read_buf, READ_BUF_SIZE_BYTES);
         mic_disp_buf((uint8_t*)mic_read_buf, READ_BUF_SIZE_BYTES);
@@ -47,20 +55,10 @@ void i2s_adc_capture_task(void* task_param)
          * xstreambuffersend is a blocking function that sends data to the stream buffer,
          * esp_now_send needs to send 128 packets of 250 bytes each, so the stream buffer needs to be able to hold at least 2-3 times of 128 * 250 bytes = BYTE_RATE bytes
          * */ 
-        size_t byte_sent = xStreamBufferSend(mic_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
+        byte_sent = xStreamBufferSend(mic_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
         if (byte_sent != READ_BUF_SIZE_BYTES) {
             ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, READ_BUF_SIZE_BYTES);
         }
-
-        /**
-         * xstreambuffersend to fft task
-        */
-        #if FFT_TASK
-        byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, EXAMPLE_I2S_READ_LEN/16, portMAX_DELAY);
-        if (byte_sent != EXAMPLE_I2S_READ_LEN/16) {
-            ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, EXAMPLE_I2S_READ_LEN/4);
-        }
-        #endif
     }
     free(mic_read_buf);
     vTaskDelete(NULL);
@@ -105,6 +103,10 @@ void i2s_dac_playback_task(void* task_param) {
                 deinit_config();
                 exit(err);
             }
+            // reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
+            // reference: https://docs.espressif.com/projects/esp-idf/en/v4.2/esp32/api-reference/peripherals/i2s.html#_CPPv49i2s_write10i2s_port_tPKv6size_tP6size_t10TickType_t
+            // reference: i2s_write(I2S_NUM, samples_data, ((bits+8)/16)*SAMPLE_PER_CYCLE*4, &i2s_bytes_write, 100); 
+            // this number is  without adc to dac scaling that is done in the i2s_adc_data_scale function, the i2s_write function needs to be called with the above parameters
         }
         else if(num_bytes != EXAMPLE_I2S_SAMPLE_RATE) {
             printf("Error: partial reading from net stream: %d\n", errno);
