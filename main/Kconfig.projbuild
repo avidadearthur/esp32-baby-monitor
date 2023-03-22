@@ -1,0 +1,53 @@
+menu "Application Configuration"
+
+	choice DIRECTION
+		prompt "Communication direction"
+		default RECEIVER
+		help
+			Select Communication direction.
+		config RECEIVER
+			bool "Receiver"
+			help
+				Execute Receiver.
+		config TRANSMITTER
+			bool "Transmitter"
+			help
+				Execute Transmitter.
+	endchoice
+
+	config ADVANCED
+		bool "Enable Advanced Setting"
+		default false
+		help
+			Enable Advanced Setting.
+
+	choice RF_RATIO
+		depends on ADVANCED
+		prompt "RF Data Ratio"
+		default RF_RATIO_2M
+		help
+			Select RF Data Ratio.
+		config RF_RATIO_2M
+			bool "2Mbps"
+			help
+				RF Data Ratio is 2Mbps.
+		config RF_RATIO_1M
+			bool "1Mbps"
+			help
+				RF Data Ratio is 1Mbps.
+		config RF_RATIO_250K
+			bool "250Kbps"
+			help
+				RF Data Ratio is 250Kbps.
+	endchoice
+
+	config RETRANSMIT_DELAY
+		depends on ADVANCED
+		int "Auto Retransmit Delay"
+		range 0 15
+		default 0
+		help
+			Set Auto Retransmit Delay.
+			Delay = value * 250us.
+
+endmenu 
