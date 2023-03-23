@@ -1,0 +1,2 @@
+# ignore everything under esp32-node\build
+esp32-node/build/*
