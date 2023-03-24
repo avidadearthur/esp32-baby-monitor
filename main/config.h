@@ -42,8 +42,8 @@
 #include "i2s_recv_std_config.h"
 #endif
 
-#define RECV        1
-#define FFT_TASK    0
+#define RECV        0
+#define FFT_TASK    1
 #define RECORD_TASK 0
 
 /** wifi configuration */
