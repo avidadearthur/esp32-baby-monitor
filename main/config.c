@@ -85,7 +85,7 @@ void i2s_adc_dac_config(void)
      // reference: https://docs.espressif.com/projects/esp-idf/en/v4.2/esp32/api-reference/peripherals/i2s.html#_CPPv49i2s_write10i2s_port_tPKv6size_tP6size_t10TickType_t
      // reference: i2s_write(I2S_NUM, samples_data, ((bits+8)/16)*SAMPLE_PER_CYCLE*4, &i2s_bytes_write, 100); 
     
-    #if RECV
+    #if(RECV)
      //init DAC pad (GPIO25 & GPIO26) & mode
      i2s_set_pin(i2s_num, NULL);
      // set i2s clock source for i2s spk

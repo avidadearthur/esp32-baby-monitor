@@ -139,6 +139,55 @@ void fft_task(void* task_param){
             x1[i] = 10 * log10f((x1[i * 2 + 0] * x1[i * 2 + 0] + x1[i * 2 + 1] * x1[i * 2 + 1] + 0.0000001));
         }
 
+        // // loop through the power spectrum to find the five highest peaks
+        // for (int i = 0; i < (NFFT/2)+1; i++) {
+        //     // if the current peak is higher than the first peak, then shift the other peaks down and set the current peak as the first peak
+        //     if (power[i] > max1) {
+        //         max5 = max4;
+        //         max4 = max3;
+        //         max3 = max2;
+        //         max2 = max1;
+        //         max1 = power[i];
+        //         freq5 = freq4;
+        //         freq4 = freq3;
+        //         freq3 = freq2;
+        //         freq2 = freq1;
+        //         freq1 = freqs[i];
+        //     }
+        //     // if the current peak is higher than the second peak, then shift the other peaks down and set the current peak as the second peak
+        //     else if (power[i] > max2) {
+        //         max5 = max4;
+        //         max4 = max3;
+        //         max3 = max2;
+        //         max2 = power[i];
+        //         freq5 = freq4;
+        //         freq4 = freq3;
+        //         freq3 = freq2;
+        //         freq2 = freqs[i];
+        //     }
+        //     // if the current peak is higher than the third peak, then shift the other peaks down and set the current peak as the third peak
+        //     else if (power[i] > max3) {
+        //         max5 = max4;
+        //         max4 = max3;
+        //         max3 = power[i];
+        //         freq5 = freq4;
+        //         freq4 = freq3;
+        //         freq3 = freqs[i];
+        //     }
+        //     // if the current peak is higher than the fourth peak, then shift the other peaks down and set the current peak as the fourth peak
+        //     else if (power[i] > max4) {
+        //         max5 = max4;
+        //         max4 = power[i];
+        //         freq5 = freq4;
+        //         freq4 = freqs[i];
+        //     }
+        //     // if the current peak is higher than the fifth peak, then set the current peak as the fifth peak
+        //     else if (power[i] > max5) {
+        //         max5 = power[i];
+        //         freq5 = freqs[i];
+        //     }
+        // }
+
     #endif
     
     #if (FFT_DEBUG)
