@@ -4,6 +4,7 @@
 #define REP 100
 #define MIN_LOG_N 0
 #define MAX_LOG_N 12
+#define FFT_DEBUG 0
 // define frequency step for each bin in spectrum with N = 1024, if higher stack overflow (only 160 available at the end) or heap cap occurs
 #define FREQ_STEP (EXAMPLE_I2S_SAMPLE_RATE / (EXAMPLE_I2S_READ_LEN/16))
 
@@ -31,7 +32,11 @@ void init_fft(StreamBufferHandle_t fft_stream_buf){
         freqs[i] = i * FREQ_STEP;
     }
 
-    
+    #if (FFT_DEBUG)
+    // create a timer to coutn the time elapsed
+    time_t start_time = time(NULL);
+    #endif
+
     // when there is data available in the stream buffer, read it and execute fft
     while (xStreamBufferBytesAvailable(fft_stream_buf)) {
 
@@ -76,9 +81,9 @@ void init_fft(StreamBufferHandle_t fft_stream_buf){
             }
         }
 
-        // display the frequency and amplitude of the two highest peaks
-        printf("peak 1 at frequency %lf Hz with amplitude %lf \n", freq1, max1);
-        printf("peak 2 at frequency %lf Hz with amplitude %lf \n", freq2, max2);
+        // // display the frequency and amplitude of the two highest peaks
+        // printf("peak 1 at frequency %lf Hz with amplitude %lf \n", freq1, max1);
+        // printf("peak 2 at frequency %lf Hz with amplitude %lf \n", freq2, max2);
 
         // if peak is in range of 350-550 Hz, then it is a note
         if (freq1 > 350.0 && freq1 < 550.0) {
@@ -94,6 +99,17 @@ void init_fft(StreamBufferHandle_t fft_stream_buf){
         fft_input = NULL;
         vPortFree(power);
         power = NULL;
+
+        #if FFT_DEBUG
+        // check if the timer has reached 10 second
+        if (time(NULL) - start_time >= 10) {
+            // reset the timer
+            start_time = time(NULL);
+            // break the loop
+            printf("breaking fft loop \n");
+            break;
+        }
+        #endif
     }
 
     // free resources
