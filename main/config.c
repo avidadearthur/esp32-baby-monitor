@@ -69,15 +69,21 @@ void i2s_adc_dac_config(void)
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT, // only right channel for adc
         #endif
         .intr_alloc_flags = 0, // default interrupt priority
-        .dma_desc_num = 4, // number of dma descriptors, or count for adc
-        .dma_frame_num = 512, // number of dma frames, or length for adc
+        .dma_buf_count = 4, // number of dma descriptors, or count for adc
+        .dma_buf_len = 512, // number of dma frames, or length for adc
         .use_apll = false, // use apll for adc. if false, peripheral clock is derived and used for better wifi transmission performance (pending test)
-        .tx_desc_auto_clear = false, // i2s auto clear tx descriptor on underflow
+        // .tx_desc_auto_clear = false, // i2s auto clear tx descriptor on underflow
      };
      //install and start i2s driver
      i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
      //init ADC pad
      i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
+     // set i2s clock source for i2s mic
+     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE*1.25, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_FORMAT);
+     // the audio quality was fixed by setting the i2s clock source to ((adc_bits+8)/16) times the sample rate, which is 1.25 times the sample rate
+     // reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
+     // reference: https://docs.espressif.com/projects/esp-idf/en/v4.2/esp32/api-reference/peripherals/i2s.html#_CPPv49i2s_write10i2s_port_tPKv6size_tP6size_t10TickType_t
+     // reference: i2s_write(I2S_NUM, samples_data, ((bits+8)/16)*SAMPLE_PER_CYCLE*4, &i2s_bytes_write, 100); 
     
     #if RECV
      //init DAC pad (GPIO25 & GPIO26) & mode
@@ -95,11 +101,12 @@ esp_err_t espnow_init(void){
 
     /* Initialize ESPNOW and register sending and receiving callback function. */
     ESP_ERROR_CHECK( esp_now_init() );
-    
+#if (RECV)
     /**
      * registration of receiving callback function
      * */ 
     ESP_ERROR_CHECK( esp_now_register_recv_cb(espnow_recv_task) );
+#endif
 
 #if CONFIG_ESP_WIFI_STA_DISCONNECTED_PM_ENABLE
     ESP_ERROR_CHECK( esp_now_set_wake_window(65535) );
