@@ -2,6 +2,7 @@
  * @file ui.c
  * @brief todo.
  */
+#include "config.h"
 #include "ui.h"
 
 // Define states of the FSM
@@ -30,8 +31,12 @@ static TaskHandle_t isr_button_4 = NULL;
 static volatile uint32_t last_button_isr_time = 0;
 /*----------------------------------------------*/
 
-void init_display(void *arg)
+static StreamBufferHandle_t nrf_data_xStream;
+
+void init_display(void *xStream)
 {
+    nrf_data_xStream = xStream;
+
     // Set up I2C
     i2c_master_init();
     i2c_port_t i2c_num = I2C_MASTER_NUM;
@@ -129,7 +134,20 @@ void button_task_3(void *arg)
             // printf("Transitioning from STATE_3 to HOME_STATE\n");
             i2c_lcd1602_clear(lcd_info);
             i2c_lcd1602_home(lcd_info);
-            i2c_lcd1602_write_string(lcd_info, "HOME TASK");
+
+            /*Home task - move to separate function later*/
+
+            // read the stream of data from the nrf_data_xStream
+            size_t bytes_read = 0;
+            // Create buffer for mydata.now_time
+            uint32_t *nrf_data = (uint32_t *)malloc(sizeof(uint32_t));
+            bytes_read = xStreamBufferReceive(nrf_data_xStream, (void *)nrf_data, sizeof(uint32_t), portMAX_DELAY);
+
+            // format string to print
+            char nrf_data_string[16];
+            sprintf(nrf_data_string, "%ld", *nrf_data);
+
+            i2c_lcd1602_write_string(lcd_info, nrf_data_string);
         }
     }
 }
@@ -162,7 +180,20 @@ void button_task_4(void *arg)
             // printf("Transitioning from STATE_1 to HOME_STATE\n");
             i2c_lcd1602_clear(lcd_info);
             i2c_lcd1602_home(lcd_info);
-            i2c_lcd1602_write_string(lcd_info, "HOME TASK");
+
+            /*Home task - move to separate function later*/
+
+            // read the stream of data from the nrf_data_xStream
+            size_t bytes_read = 0;
+            // Create buffer for mydata.now_time
+            uint32_t *nrf_data = (uint32_t *)malloc(sizeof(uint32_t));
+            bytes_read = xStreamBufferReceive(nrf_data_xStream, (void *)nrf_data, sizeof(uint32_t), portMAX_DELAY);
+
+            // format string to print
+            char nrf_data_string[16];
+            sprintf(nrf_data_string, "%ld", *nrf_data);
+
+            i2c_lcd1602_write_string(lcd_info, nrf_data_string);
         }
         // if in home state go to state 3
         else if (fsm_state == HOME_STATE)

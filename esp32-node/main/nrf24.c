@@ -8,6 +8,8 @@ typedef union
 
 MYDATA_t mydata;
 
+static StreamBufferHandle_t nrf_data_xStream;
+
 #if CONFIG_ADVANCED
 void AdvancedSettings(NRF24_t *dev)
 {
@@ -32,8 +34,10 @@ void AdvancedSettings(NRF24_t *dev)
 #endif // CONFIG_ADVANCED
 
 #if CONFIG_RECEIVER
-void receiver(void *pvParameters)
+void receiver(void *xStream)
 {
+    nrf_data_xStream = xStream;
+
     ESP_LOGI(pcTaskGetName(0), "Start");
     NRF24_t dev;
     Nrf24_init(&dev);
@@ -61,6 +65,9 @@ void receiver(void *pvParameters)
     Nrf24_printDetails(&dev);
     ESP_LOGI(pcTaskGetName(0), "Listening...");
 
+    // Create buffer for mydata.now_time
+    uint32_t *buffer = (uint32_t *)malloc(sizeof(mydata.now_time));
+
     while (1)
     {
         // When the program is received, the received data is output from the serial port
@@ -68,6 +75,14 @@ void receiver(void *pvParameters)
         {
             Nrf24_getData(&dev, mydata.value);
             ESP_LOGI(pcTaskGetName(0), "Got data:%lu", mydata.now_time);
+
+            // Clear buffer
+            memset(buffer, 0, sizeof(mydata.now_time));
+            // put mydata.now_time into buffer
+            memcpy(buffer, mydata.now_time, sizeof(mydata.now_time));
+
+            // Send data to the LCD task via the stream buffer
+            xStreamBufferSend(nrf_data_xStream, buffer, sizeof(mydata.now_time), portMAX_DELAY);
         }
         vTaskDelay(1);
     }
@@ -84,8 +99,9 @@ void transmitter(void *pvParameters)
     uint8_t channel = 28;
     Nrf24_config(&dev, channel, payload);
 
-    // Set the receiver address using 5 characters
-    esp_err_t ret = Nrf24_setTADDR(&dev, (uint8_t *)"FGHIJ");
+    // Set own address using 5 characters
+    uint8_t tx_addr[5] = {0x04, 0xAD, 0x45, 0x98, 0x51};
+    esp_err_t ret = Nrf24_setRADDR(&dev, tx_addr);
     if (ret != ESP_OK)
     {
         ESP_LOGE(pcTaskGetName(0), "nrf24l01 not installed");

@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/stream_buffer.h"
 #include "esp_system.h"
 #include "driver/gpio.h"
 #include "driver/i2c.h"
@@ -8,8 +10,8 @@
 #include "sdkconfig.h"
 #include "rom/uart.h"
 
-#include "smbus.h"
-#include "i2c-lcd1602.h"
+#include "../../components/esp32-smbus/smbus.h"
+#include "../../components/esp32-i2c-lcd1602/i2c-lcd1602.h"
 
 // define to enable lcd and button interrupts
 #define UI_CONNECTED 1

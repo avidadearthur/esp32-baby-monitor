@@ -1,4 +1,7 @@
 {
     "idf.adapterTargetName": "esp32",
-    "idf.portWin": "COM6"
+    "idf.portWin": "COM12",
+    "files.associations": {
+        "smbus.h": "c"
+    }
 }
