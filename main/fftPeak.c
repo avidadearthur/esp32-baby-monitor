@@ -21,11 +21,10 @@ void fft_task(void* task_param){
 
     int N = N_SAMPLES; // FFT size max in DSP is 4096. EXAMPLE_I2S_READ_LEN
     int power_of_two = dsp_power_of_two(N);
-    // total sample is next power of two of N
-    int total_samples = pow(2, power_of_two+1);
-
 
 #if (FFT_ESP_DSP)
+    // total sample is next power of two of N
+    int total_samples = pow(2, power_of_two+1);
     // Input test array
     float* x1 = (float*) calloc(total_samples, sizeof(float));
     // Window coefficients
@@ -64,7 +63,7 @@ void fft_task(void* task_param){
             freqs[i] = i*FREQ_STEP;
         }
     }
-#else (FFT_ESP_DSP)
+#else
     float* freqs = calloc((total_samples/2)+1, sizeof(float));
     // check if freqs is allocated
     if (freqs == NULL){
@@ -96,7 +95,7 @@ void fft_task(void* task_param){
 
 #if (FFT_DEBUG)
     // create a timer to coutn the time elapsed
-    time_t start_time = time(NULL);
+    // time_t start_time = time(NULL);
     int count = 0;
 #endif
 
@@ -105,6 +104,7 @@ void fft_task(void* task_param){
         
         // fill signal with ADC output (use xStreamBufferReceive() to get data from ADC DMA buffer) with size sample rate
         size_t byte_received = xStreamBufferReceive(fft_stream_buf, fft_input, N, wait_ticks);
+        assert(byte_received == N);
 
     #if (!FFT_ESP_DSP)
         // scale the 12-bit wide ADC output to 32-bit float
@@ -125,7 +125,7 @@ void fft_task(void* task_param){
                 power[i] = (fft_analysis->output)[2*i]*(fft_analysis->output)[2*i] + (fft_analysis->output)[(2*i)+1]*(fft_analysis->output)[(2*i)+1];   /* amplitude sqr */
             }
         }
-    #else (FFT_ESP_DSP)
+    #else
         // memory copy the input signal to x1 align to 32-bit
         memcpy(x1, fft_input, N*sizeof(char));
         // FFT
