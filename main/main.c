@@ -32,6 +32,7 @@ void app_main(void) {
 
     #if(!RECV) & (FFT_TASK)
     fft_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN, EXAMPLE_I2S_READ_LEN/16);
+    // set trigger level to 1/16 of the stream buffer size
     xStreamBufferSetTriggerLevel(fft_stream_buf, EXAMPLE_I2S_READ_LEN/16);
     // check if the stream buffer is created
     if (fft_stream_buf == NULL) {

@@ -4,192 +4,267 @@
 #define REP 100
 #define MIN_LOG_N 0
 #define MAX_LOG_N 12
-#define FFT_DEBUG 1
+
 // define frequency step for each bin in spectrum with N = 1024, if higher stack overflow (only 160 available at the end) or heap cap occurs
-#define FREQ_STEP (EXAMPLE_I2S_SAMPLE_RATE / (EXAMPLE_I2S_READ_LEN/16))
+#define N_SAMPLES (EXAMPLE_I2S_READ_LEN/16) // Amount of real input samples. FFT size max in DSP is 4096. EXAMPLE_I2S_READ_LEN
+#define FREQ_STEP (EXAMPLE_I2S_SAMPLE_RATE / N_SAMPLES)
 
-void init_fft(StreamBufferHandle_t fft_stream_buf){
+#define FFT_DEBUG 1
+#define FFT_ESP_DSP 0
 
+static const char* TAG = "FFTPEAK";
+
+
+void fft_task(void* task_param){
+    // get the stream buffer handle from the task parameter
+    StreamBufferHandle_t fft_stream_buf = (StreamBufferHandle_t) task_param;
+
+    int N = N_SAMPLES; // FFT size max in DSP is 4096. EXAMPLE_I2S_READ_LEN
+    int power_of_two = dsp_power_of_two(N);
+    // total sample is next power of two of N
+    int total_samples = pow(2, power_of_two+1);
+
+
+#if (FFT_ESP_DSP)
+    // Input test array
+    float* x1 = (float*) calloc(total_samples, sizeof(float));
+    // Window coefficients
+    // float wind[N];
+
+    esp_err_t ret;
+
+    ESP_LOGI(TAG, "Start Example.");
+    ret = dsps_fft2r_init_fc32(NULL, total_samples);
+    if (ret  != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Not possible to initialize FFT. Error = %i", ret);
+        exit(1);
+    }
+    // Generate hann window
+    // dsps_wind_hann_f32(wind, N);
+
+#else
     fft_config_t* fft_analysis;
-
-    int NFFT = EXAMPLE_I2S_READ_LEN/16; // FFT size max in DSP is 4096. EXAMPLE_I2S_READ_LEN
-
     // Create fft plan config and let it allocate input and output arrays
-    fft_analysis = fft_init(NFFT, FFT_REAL, FFT_FORWARD, NULL, NULL);
-    // ticks to wait for filling fft to complete
-    TickType_t wait_ticks = pdMS_TO_TICKS(1000);
-    
-    // create a delay
-    xTaskNotifyWait(0, 0, NULL, wait_ticks);
-
-
+    fft_analysis = fft_init(N, FFT_REAL, FFT_FORWARD, NULL, NULL);
+#endif
     size_t bytes_available = xStreamBufferBytesAvailable(fft_stream_buf);
     printf("Bytes available in stream buffer: %d \n", bytes_available);
+    // ticks to wait for filling fft to complete
+    TickType_t wait_ticks = pdMS_TO_TICKS(1000);
 
+#if(!FFT_ESP_DSP)
     // calculate frequencies for each bin in spectrum
-    float freqs[NFFT/2+1];
-    for (int i = 0; i <= (NFFT/2)+1; i++) {
-        freqs[i] = i * FREQ_STEP;
+    float freqs[((fft_analysis->size)/2)+1];
+    for (int i = 0; i <= ((fft_analysis->size)/2); i++) {
+        if (i == 1){
+            freqs[i] = (N/2)*FREQ_STEP;
+        }
+        else{
+            freqs[i] = i*FREQ_STEP;
+        }
+    }
+#else (FFT_ESP_DSP)
+    float* freqs = calloc((total_samples/2)+1, sizeof(float));
+    // check if freqs is allocated
+    if (freqs == NULL){
+        ESP_LOGE(TAG, "freqs is NULL");
+        exit(1);
+    }
+    for (int i = 0; i <= ((total_samples/2)); i++) {
+        freqs[i] = i*FREQ_STEP;
+    }
+#endif
+
+    // create a buffer of size N to hold the fft input signal
+    uint8_t* fft_input = calloc(N, sizeof(uint8_t));
+    // check if fft_input is allocated
+    if (fft_input == NULL){
+        ESP_LOGE(TAG, "fft_input is NULL");
+        exit(1);
     }
 
-    // // declare variables to hold the five highest peaks and their frequencies
-    // float max1 = 0.0;
-    // float max2 = 0.0;
-    // float max3 = 0.0;
-    // float max4 = 0.0;
-    // float max5 = 0.0;
+#if (!FFT_ESP_DSP)
+    // create a power array to hold the power spectrum
+    float* power = calloc((fft_analysis->size)/2+1, sizeof(float));
+    // check if power is allocated
+    if (power == NULL){
+        ESP_LOGE(TAG, "power is NULL");
+        exit(1);
+    }
+#endif
 
-    // float freq1 = 0.0;
-    // float freq2 = 0.0;
-    // float freq3 = 0.0;
-    // float freq4 = 0.0;
-    // float freq5 = 0.0;
-
-    #if (FFT_DEBUG)
+#if (FFT_DEBUG)
     // create a timer to coutn the time elapsed
     time_t start_time = time(NULL);
     int count = 0;
-    #endif
+#endif
+
     // when there is data available in the stream buffer, read it and execute fft
-    while (xStreamBufferBytesAvailable(fft_stream_buf)) {
-
-        // create a buffer of size NFFT to hold the fft input signal
-        uint8_t* fft_input = calloc(NFFT, sizeof(uint8_t));
-
+    while (true) {
+        
         // fill signal with ADC output (use xStreamBufferReceive() to get data from ADC DMA buffer) with size sample rate
-        size_t N = xStreamBufferReceive(fft_stream_buf, fft_input, NFFT, wait_ticks);
-        assert(N == NFFT);
+        size_t byte_received = xStreamBufferReceive(fft_stream_buf, fft_input, N, wait_ticks);
 
-        // scale the signal from 12 bit width adc data to 32 bit float
-        for (int i = 0; i < NFFT; i++) {
-            fft_analysis->input[i] = (float) fft_input[i] / 4096.0;
+    #if (!FFT_ESP_DSP)
+        // scale the 12-bit wide ADC output to 32-bit float
+        for (int i = 0; i < N; i++) {
+            fft_analysis->input[i] = (float)fft_input[i] / 4096;
         }
-
         // execute fft
         fft_execute(fft_analysis);
+        // calculate power spectrum
+        for (int i = 0; i < (fft_analysis->size)/2; i++) {
+            if(i == 0){
+                power[i] = (fft_analysis->output)[0]*(fft_analysis->output)[0];   /* DC component */
+            }
+            else if(i == (fft_analysis->size)/2){
+                power[i] = (fft_analysis->output)[1]*(fft_analysis->output)[1];   /* Nyquist component */
+            }
+            else{
+                power[i] = (fft_analysis->output)[2*i]*(fft_analysis->output)[2*i] + (fft_analysis->output)[(2*i)+1]*(fft_analysis->output)[(2*i)+1];   /* amplitude sqr */
+            }
+        }
+    #else (FFT_ESP_DSP)
+        // memory copy the input signal to x1 align to 32-bit
+        memcpy(x1, fft_input, N*sizeof(char));
+        // FFT
+        dsps_fft2r_fc32(x1, total_samples);
+        // Bit reversal
+        dsps_bit_rev_fc32(x1, total_samples);
+        // Convert one complex vector with length N to one real specturm vector with length M
+        dsps_cplx2reC_fc32(x1, total_samples);
 
+        for (int i = 0 ; i < total_samples/2 ; i++) {
+            x1[i] = 10 * log10f((x1[i * 2 + 0] * x1[i * 2 + 0] + x1[i * 2 + 1] * x1[i * 2 + 1] + 0.0000001));
+        }
+
+    #endif
+    
+    #if (FFT_DEBUG)
         // increment count
         count++;
+    #endif
 
-        // create a power array to hold the power spectrum
-        float* power = calloc(NFFT/2+1, sizeof(float));
+    float max1 = 0;
+    float max2 = 0;
+    float freq1 = 0;
+    float freq2 = 0;
 
-        // calculate power spectrum
-        for (int i = 0; i < (NFFT/2)+1; i++) {
-            power[i] = (fft_analysis->output)[i]*(fft_analysis->output)[i] + (fft_analysis->output)[i+1]*(fft_analysis->output)[i+1];           /* amplitude sqr */
-        }
+    #if(!FFT_ESP_DSP)
+        // loop through power spectrum to find two highest peaks
+        for (int i = 0; i < ((fft_analysis->size)/2); i++) {
 
-        // // loop through the power spectrum to find the five highest peaks
-        // for (int i = 0; i < (NFFT/2)+1; i++) {
-        //     // if the current peak is higher than the first peak, then shift the other peaks down and set the current peak as the first peak
-        //     if (power[i] > max1) {
-        //         max5 = max4;
-        //         max4 = max3;
-        //         max3 = max2;
-        //         max2 = max1;
-        //         max1 = power[i];
-        //         freq5 = freq4;
-        //         freq4 = freq3;
-        //         freq3 = freq2;
-        //         freq2 = freq1;
-        //         freq1 = freqs[i];
-        //     }
-        //     // if the current peak is higher than the second peak, then shift the other peaks down and set the current peak as the second peak
-        //     else if (power[i] > max2) {
-        //         max5 = max4;
-        //         max4 = max3;
-        //         max3 = max2;
-        //         max2 = power[i];
-        //         freq5 = freq4;
-        //         freq4 = freq3;
-        //         freq3 = freq2;
-        //         freq2 = freqs[i];
-        //     }
-        //     // if the current peak is higher than the third peak, then shift the other peaks down and set the current peak as the third peak
-        //     else if (power[i] > max3) {
-        //         max5 = max4;
-        //         max4 = max3;
-        //         max3 = power[i];
-        //         freq5 = freq4;
-        //         freq4 = freq3;
-        //         freq3 = freqs[i];
-        //     }
-        //     // if the current peak is higher than the fourth peak, then shift the other peaks down and set the current peak as the fourth peak
-        //     else if (power[i] > max4) {
-        //         max5 = max4;
-        //         max4 = power[i];
-        //         freq5 = freq4;
-        //         freq4 = freqs[i];
-        //     }
-        //     // if the current peak is higher than the fifth peak, then set the current peak as the fifth peak
-        //     else if (power[i] > max5) {
-        //         max5 = power[i];
-        //         freq5 = freqs[i];
-        //     }
-        // }
-
-                // loop through power spectrum to find two highest peaks
-        float max1 = 0;
-        float max2 = 0;
-        float freq1 = 0;
-        float freq2 = 0;
-        for (int i = 0; i < (NFFT/2)+1; i++) {
-            if (power[i] > max1) {
-                max2 = max1;
-                freq2 = freq1;
-                max1 = power[i];
-                freq1 = freqs[i];
+            if((i > 5) && (i < 100)){
+                if ((power[i] > max1)) {
+                    max2 = max1;
+                    freq2 = freq1;
+                    max1 = power[i];
+                    freq1 = freqs[i];
+                }
+                else if (power[i] > max2) {
+                    max2 = power[i];
+                    freq2 = freqs[i];
+                }
             }
-            else if (power[i] > max2) {
-                max2 = power[i];
-                freq2 = freqs[i];
-            }
-        }
 
+        }
 
         // if peak is in range of 350-550 Hz, then it is a note
-        if (freq1 > 350.0 && freq1 < 550.0) {
-            printf("f0 detected at frequency %lf Hz with amplitude %lf \n", freq1, max1);
+        if ((freq1 > 350.0 && freq1 < 500.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
+            printf("cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
         }
-        // if peak is in range 1150 - 1500 Hz, then it is a note
-        else if (freq2 > 1150.0 && freq2 < 1500.0) {
-            printf("cry detected at frequency %lf Hz with amplitude %lf \n", freq2, max2);
-        }
-
-        // clear stack
-        vPortFree(fft_input);
-        fft_input = NULL;
-        vPortFree(power);
-        power = NULL;
 
         #if(FFT_DEBUG)
-            // check if the timer has reached 600 second
-            if (time(NULL) - start_time >= 60*1000) {
-                // reset the timer
-                start_time = time(NULL);
-                // break the loop
-                printf("breaking fft loop \n");
-                // display the frequency and amplitude of the two highest peaks
-                break;
-            }
-            // if the remainder of count divided by 16 is 0, then print the frequency and amplitude of the two highest peaks
-            if (count % 44 == 0) {
-                printf("count == 44x, breaking fft loop \n");
+            // // check if the timer has reached 600 second
+            // if (time(NULL) - start_time >= 60*1000) {
+            //     // reset the timer
+            //     start_time = time(NULL);
+            //     // break the loop
+            //     printf("breaking fft loop \n");
+            //     // display the frequency and amplitude of the two highest peaks
+            //     break;
+            // }
+            // if the remainder of count divided by x is 0, then print the frequency and amplitude of the two highest peaks
+
+            if ((count % (EXAMPLE_I2S_SAMPLE_RATE/N_SAMPLES) == 0) & (count > 30)) {
                 printf("peak 1 at frequency %lf Hz with amplitude %lf \n", freq1, max1);
                 printf("peak 2 at frequency %lf Hz with amplitude %lf \n", freq2, max2);
-                // printf("peak 3 at frequency %lf Hz with amplitude %lf \n", freq3, max3);
-                // printf("peak 4 at frequency %lf Hz with amplitude %lf \n", freq4, max4);
-                // printf("peak 5 at frequency %lf Hz with amplitude %lf \n", freq5, max5);
 
-                // reset the counter
                 count = 0;
             }
 
-        #endif
-    }
 
-    // free resources
+        #endif
+
+    #endif
+    #if (FFT_ESP_DSP)
+        // find the peaks in the power spectrum and their corresponding frequencies
+        for (int i = 0; i < total_samples/2; i++) {
+            if(i > 4 && i < 100){
+                if ((x1[i] > max1)) {
+                    max2 = max1;
+                    freq2 = freq1;
+                    max1 = x1[i];
+                    freq1 = freqs[i];
+                }
+                else if (x1[i] > max2) {
+                    max2 = x1[i];
+                    freq2 = freqs[i];
+                }
+            }
+        }
+        #if(FFT_DEBUG)
+        // // check if the timer has reached 600 second
+        // if (time(NULL) - start_time >= 60*1000) {
+        //     // reset the timer
+        //     start_time = time(NULL);
+        //     // break the loop
+        //     printf("breaking fft loop \n");
+        //     // display the frequency and amplitude of the two highest peaks
+        //     break;
+        // }
+        // if the remainder of count divided by x is 0, then print the frequency and amplitude of the two highest peaks
+
+        if (count % (EXAMPLE_I2S_SAMPLE_RATE/N_SAMPLES) == 0) {
+            printf("peak 1 at frequency %lf Hz with amplitude %lf \n", freq1, max1);
+            printf("peak 2 at frequency %lf Hz with amplitude %lf \n", freq2, max2);
+
+            count = 0;
+        }
+        #endif
+
+    #endif
+    }
+    
+    // clear stack
+    vPortFree(fft_input);
+    fft_input = NULL;
+#if(!FFT_ESP_DSP)
+    vPortFree(power);
+    power = NULL;
     fft_destroy(fft_analysis);
+    fft_analysis = NULL;
+#else
+    vPortFree(x1);
+    x1 = NULL;
+    vPortFree(freqs);
+    freqs = NULL;
+#endif
+    vTaskDelete(NULL);
 }
+
+void init_fft(StreamBufferHandle_t fft_audio_buf){
+    // ticks to wait for filling fft to complete
+    TickType_t wait_ticks = pdMS_TO_TICKS(1000);
+    // create a delay
+    xTaskNotifyWait(0, 0, NULL, wait_ticks);
+    // create a task to run the fft
+    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, 5, NULL);
+}
+
+
+
+
 
 

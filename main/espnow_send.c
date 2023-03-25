@@ -33,7 +33,7 @@ void espnow_send_task(void* task_param) {
 
         // read from the mic stream buffer until it is empty
         size_t num_bytes = xStreamBufferReceive(mic_stream_buf, esp_now_send_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
-        if (num_bytes > 0) {
+        if (num_bytes > 0 ) {
             esp_err_t err = esp_now_send(broadcast_mac, esp_now_send_buf, READ_BUF_SIZE_BYTES);
             
             #if EXAMPLE_I2S_BUF_DEBUG

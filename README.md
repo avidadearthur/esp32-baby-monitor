@@ -106,8 +106,19 @@ Here is the example of ESPNOW sending device console output.
 ```
 Init transport!
 initializing i2s mic
-peak 1 at frequency 0.000000 Hz with amplitude 425.175385 
-peak 2 at frequency 86.000000 Hz with amplitude 39.549194
+Bytes available in stream buffer: 16384 
+peak 1 at frequency 430.000000 Hz with amplitude 2.408174 
+peak 2 at frequency 1892.000000 Hz with amplitude 2.283813 
+peak 1 at frequency 1505.000000 Hz with amplitude 2.708347 
+peak 2 at frequency 301.000000 Hz with amplitude 2.529614 
+peak 1 at frequency 645.000000 Hz with amplitude 3.665064 
+peak 2 at frequency 387.000000 Hz with amplitude 2.986069 
+cry detected at f0 387.000000 Hz with amplitude 3.617141 and f2 1376.000000 with amplitude 2.395091
+cry detected at f0 387.000000 Hz with amplitude 2.040233 and f2 1376.000000 with amplitude 1.812771
+cry detected at f0 387.000000 Hz with amplitude 2.650546 and f2 1376.000000 with amplitude 2.321801
+cry detected at f0 387.000000 Hz with amplitude 3.742941 and f2 1376.000000 with amplitude 2.673561
+cry detected at f0 387.000000 Hz with amplitude 3.999676 and f2 1376.000000 with amplitude 2.550040
+cry detected at f0 387.000000 Hz with amplitude 2.740722 and f2 1376.000000 with amplitude 1.979644
 ```
 
 ## Troubleshooting

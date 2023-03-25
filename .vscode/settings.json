@@ -17,6 +17,9 @@
     "cmath": "c",
     "complex": "c",
     "fft.h": "c",
-    "numeric": "c"
+    "numeric": "c",
+    "bitset": "c",
+    "chrono": "c",
+    "algorithm": "c"
   }
 }
