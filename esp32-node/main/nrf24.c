@@ -1,9 +1,11 @@
 #include "nrf24.h"
-
-typedef union
+// include random number generator
+#include "esp_random.h"
+#include <math.h>
+typedef struct
 {
-    uint8_t value[4];
-    unsigned long now_time;
+    uint8_t data[3];
+    int now_time;
 } MYDATA_t;
 
 MYDATA_t mydata;
@@ -45,7 +47,7 @@ void receiver(void *xStream)
     ESP_LOGI(pcTaskGetName(0), "Start");
     NRF24_t dev;
     Nrf24_init(&dev);
-    uint8_t payload = sizeof(mydata.value);
+    uint8_t payload = sizeof(mydata.data);
     uint8_t channel = 28;
     Nrf24_config(&dev, channel, payload);
 
@@ -70,27 +72,37 @@ void receiver(void *xStream)
     ESP_LOGI(pcTaskGetName(0), "Listening...");
 
     // Create buffer for mydata.now_time
-    uint32_t *buffer = (uint32_t *)malloc(10 * sizeof(uint32_t));
-    buffer[0] = 0;
+    // uint32_t *buffer = (uint32_t *)malloc(sizeof(uint32_t));
+    // buffer[0] = 0;
+
+    // Create buffer for mydata data
+    uint8_t *buffer = (uint8_t *)malloc(sizeof(uint8_t) * 3);
 
     while (1)
     {
         // When the program is received, the received data is output from the serial port
         if (Nrf24_dataReady(&dev))
         {
-            Nrf24_getData(&dev, mydata.value);
-            ESP_LOGI(pcTaskGetName(0), "Got data:%lu", mydata.now_time);
+            Nrf24_getData(&dev, mydata.data);
+            mydata.now_time = xTaskGetTickCount();
+            ESP_LOGI(pcTaskGetName(0), "Got data:%d", mydata.now_time);
 
-            // put mydata.now_time into buffer
-            buffer[0] = mydata.now_time;
-            // log buffer value
-            ESP_LOGI(pcTaskGetName(0), "buffer[0]=%lu", buffer[0]);
-            // Send and check bytes sent
-            size_t bytes_sent = xStreamBufferSend(nrf_data_xStream, (void *)buffer, sizeof(uint32_t), portMAX_DELAY);
-            if (bytes_sent != sizeof(uint32_t))
+            size_t bytes_sent = xStreamBufferSend(nrf_data_xStream, (void *)mydata.data, sizeof(mydata.data), portMAX_DELAY);
+            if (bytes_sent != sizeof(mydata.data))
             {
                 ESP_LOGE(pcTaskGetName(0), "Error sending data to stream buffer");
             }
+
+            // // put mydata.now_time into buffer
+            // buffer[0] = mydata.now_time;
+            // // log buffer value
+            // ESP_LOGI(pcTaskGetName(0), "buffer[0]=%lu", buffer[0]);
+            // // Send and check bytes sent
+            // size_t bytes_sent = xStreamBufferSend(nrf_data_xStream, (void *)buffer, sizeof(uint32_t), portMAX_DELAY);
+            // if (bytes_sent != sizeof(uint32_t))
+            // {
+            //     ESP_LOGE(pcTaskGetName(0), "Error sending data to stream buffer");
+            // }
         }
         vTaskDelay(1);
     }
@@ -103,7 +115,7 @@ void transmitter(void *pvParameters)
     ESP_LOGI(pcTaskGetName(0), "Start");
     NRF24_t dev;
     Nrf24_init(&dev);
-    uint8_t payload = sizeof(mydata.value);
+    uint8_t payload = sizeof(mydata.data);
     uint8_t channel = 28;
     Nrf24_config(&dev, channel, payload);
 
@@ -126,15 +138,50 @@ void transmitter(void *pvParameters)
     // Print settings
     Nrf24_printDetails(&dev);
 
+    float temp = 0.0;
+    uint8_t status = 0;
+    int16_t temp_int = 0;
+    uint16_t temp_combined = 0;
+    float temp_float = 0.0;
+    int now_time = 0;
+
     while (1)
     {
-        mydata.now_time = xTaskGetTickCount();
-        Nrf24_send(&dev, mydata.value);
+        now_time = xTaskGetTickCount();
+        mydata.now_time = now_time;
+
+        // uncomment for testing
+        // Nrf24_send(&dev, mydata.value);
+
+        // Send random fake temperature data between 20.5 and 25.0 degrees
+        temp = 20.5 + (float)(rand() % 50) / 10.0;
+
+        // Send a random status that can only be 0 or 1
+        status = rand() % 2;
+
+        // Convert the temperature to an integer
+        temp_int = (int16_t)(temp * 10.0);
+
+        // Copy the temperature and status values to the data array
+        mydata.data[0] = (uint8_t)(temp_int & 0xFF);        // lower byte of temperature
+        mydata.data[1] = (uint8_t)((temp_int >> 8) & 0xFF); // upper byte of temperature
+        mydata.data[2] = status;
+
+        // Combine the upper and lower bytes of the temperature into a 16-bit integer
+        temp_combined = ((uint16_t)mydata.data[1] << 8) | mydata.data[0];
+
+        // Convert the combined temperature back to a float
+        temp_float = ((float)temp_combined) / 10.0;
+
+        // Send the data
+        Nrf24_send(&dev, mydata.data);
+
         vTaskDelay(1);
         ESP_LOGI(pcTaskGetName(0), "Wait for sending.....");
         if (Nrf24_isSend(&dev, 1000))
         {
-            ESP_LOGI(pcTaskGetName(0), "Send success:%lu", mydata.now_time);
+            // Log the data to be sent
+            ESP_LOGI(pcTaskGetName(0), "Sending data: %d: %.1f °C, baby_status: %d", mydata.now_time, temp_float, mydata.data[2]);
         }
         else
         {
