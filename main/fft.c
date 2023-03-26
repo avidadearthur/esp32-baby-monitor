@@ -1,6 +1,6 @@
 /** 
  * Fast Fourier Transform
- * Partial Reference: [Robin Scheibler](http://www.robinscheibler.org)
+ * Partial Reference: [MIT](https://www.fftw.org), [Robin Scheibler](http://www.robinscheibler.org), and [Paul Bourke](http://paulbourke.net/miscellaneous/dft/)
 */
 #include <stdlib.h>
 #include <stdio.h>
@@ -39,7 +39,7 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
   config->twiddle_factors = (float *)malloc(2 * config->size * sizeof(float));
   assert(config->twiddle_factors != NULL);
 
-// twiddle factors: Wn = exp(j*2*pi*k/n) = cos(2*pi*k/n) + j*sin(2*pi*k/n)
+  // twiddle factors: Wn = exp(j*2*pi*k/n) = cos(2*pi*k/n) + j*sin(2*pi*k/n)
   float two_pi_by_n = TWO_PI / config->size;
 
   for (k = 0, m = 0 ; k < config->size ; k++, m+=2)
