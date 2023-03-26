@@ -8,7 +8,7 @@ typedef union
 
 MYDATA_t mydata;
 
-static StreamBufferHandle_t nrf_data_xStream;
+static StreamBufferHandle_t nrf_data_xStream = NULL;
 
 #if CONFIG_ADVANCED
 void AdvancedSettings(NRF24_t *dev)
@@ -36,7 +36,11 @@ void AdvancedSettings(NRF24_t *dev)
 #if CONFIG_RECEIVER
 void receiver(void *xStream)
 {
-    nrf_data_xStream = xStream;
+    // check if the stream buffer was passed successfully
+    if (xStream == NULL)
+    {
+        ESP_LOGE(pcTaskGetName(0), "Error receiving stream buffer");
+    }
 
     ESP_LOGI(pcTaskGetName(0), "Start");
     NRF24_t dev;
@@ -45,9 +49,9 @@ void receiver(void *xStream)
     uint8_t channel = 28;
     Nrf24_config(&dev, channel, payload);
 
-    // Set own address using 5 characters
-    uint8_t tx_addr[5] = {0x04, 0xAD, 0x45, 0x98, 0x51};
-    esp_err_t ret = Nrf24_setRADDR(&dev, tx_addr);
+    // Set the receiver address using 5 characters
+    /// ABCDE --> 0x41, 0x42, 0x43, 0x44, 0x45
+    esp_err_t ret = Nrf24_setTADDR(&dev, (uint8_t *)"ABCDE");
     if (ret != ESP_OK)
     {
         ESP_LOGE(pcTaskGetName(0), "nrf24l01 not installed");
@@ -66,7 +70,8 @@ void receiver(void *xStream)
     ESP_LOGI(pcTaskGetName(0), "Listening...");
 
     // Create buffer for mydata.now_time
-    uint32_t *buffer = (uint32_t *)malloc(sizeof(mydata.now_time));
+    uint32_t *buffer = (uint32_t *)malloc(sizeof(uint32_t));
+    buffer[0] = 0;
 
     while (1)
     {
@@ -75,16 +80,27 @@ void receiver(void *xStream)
         {
             Nrf24_getData(&dev, mydata.value);
             ESP_LOGI(pcTaskGetName(0), "Got data:%lu", mydata.now_time);
-
-            // Clear buffer
-            memset(buffer, 0, sizeof(mydata.now_time));
-            // put mydata.now_time into buffer
-            memcpy(buffer, mydata.now_time, sizeof(mydata.now_time));
-
-            // Send data to the LCD task via the stream buffer
-            xStreamBufferSend(nrf_data_xStream, buffer, sizeof(mydata.now_time), portMAX_DELAY);
         }
         vTaskDelay(1);
+
+        // put mydata.now_time into buffer
+        buffer[0] = mydata.now_time;
+
+        if (buffer[0] != 0)
+        {
+            // log buffer value
+            ESP_LOGI(pcTaskGetName(0), "buffer[0]=%lu", buffer[0]);
+            // Send and check bytes sent
+            size_t bytes_sent = xStreamBufferSend(nrf_data_xStream, (void *)buffer, sizeof(uint32_t), portMAX_DELAY);
+            if (bytes_sent != sizeof(uint32_t))
+            {
+                ESP_LOGE(pcTaskGetName(0), "Error sending data to stream buffer");
+            }
+        }
+        else
+        {
+            ESP_LOGW(pcTaskGetName(0), "No data received");
+        }
     }
 }
 #endif // CONFIG_RECEIVER
@@ -99,9 +115,9 @@ void transmitter(void *pvParameters)
     uint8_t channel = 28;
     Nrf24_config(&dev, channel, payload);
 
-    // Set own address using 5 characters
-    uint8_t tx_addr[5] = {0x04, 0xAD, 0x45, 0x98, 0x51};
-    esp_err_t ret = Nrf24_setRADDR(&dev, tx_addr);
+    // Set the receiver address using 5 characters
+    /// ABCDE --> 0x41, 0x42, 0x43, 0x44, 0x45
+    esp_err_t ret = Nrf24_setTADDR(&dev, (uint8_t *)"ABCDE");
     if (ret != ESP_OK)
     {
         ESP_LOGE(pcTaskGetName(0), "nrf24l01 not installed");
@@ -136,3 +152,16 @@ void transmitter(void *pvParameters)
     }
 }
 #endif // CONFIG_TRANSMITTER
+
+void init_nrf24(StreamBufferHandle_t xStream)
+{
+    // check if the stream buffer was passed successfully
+    if (xStream == NULL)
+    {
+        ESP_LOGE(pcTaskGetName(0), "init_nrf24 - Error receiving stream buffer");
+    }
+    // cast the void pointer to a StreamBufferHandle_t
+    nrf_data_xStream = (StreamBufferHandle_t)xStream;
+
+    xTaskCreate(receiver, "receiver", 1024 * 3, NULL, 2, NULL);
+}

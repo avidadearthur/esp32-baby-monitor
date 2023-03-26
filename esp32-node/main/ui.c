@@ -31,11 +31,43 @@ static TaskHandle_t isr_button_4 = NULL;
 static volatile uint32_t last_button_isr_time = 0;
 /*----------------------------------------------*/
 
-static StreamBufferHandle_t nrf_data_xStream;
+static StreamBufferHandle_t nrf_data_xStream = NULL;
+
+// Home task handler
+static TaskHandle_t home_task_handle = NULL;
+
+void home_task(void *arg)
+{
+    /*Home task - move to separate function later*/
+
+    // read the stream of data from the nrf_data_xStream
+    size_t bytes_read = 0;
+    // Create buffer for mydata.now_time
+    uint32_t *nrf_data = (uint32_t *)malloc(sizeof(uint32_t));
+
+    while (1)
+    {
+        i2c_lcd1602_clear(lcd_info);
+        i2c_lcd1602_home(lcd_info);
+
+        // read the stream of data from the nrf_data_xStream and if there is data, print it
+        bytes_read = xStreamBufferReceive(nrf_data_xStream, (void *)nrf_data, sizeof(uint32_t), portMAX_DELAY);
+        // format string to print
+        char nrf_data_string[16];
+        sprintf(nrf_data_string, "%lu", *nrf_data);
+
+        i2c_lcd1602_write_string(lcd_info, nrf_data_string);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
+}
 
 void init_display(void *xStream)
 {
-    nrf_data_xStream = xStream;
+    // check if the stream buffer was passed successfully
+    if (nrf_data_xStream == NULL)
+    {
+        ESP_LOGE(pcTaskGetName(0), "Error initializing stream buffer");
+    }
 
     // Set up I2C
     i2c_master_init();
@@ -56,7 +88,6 @@ void init_display(void *xStream)
 
     i2c_lcd1602_clear(lcd_info);
     i2c_lcd1602_home(lcd_info);
-    i2c_lcd1602_write_string(lcd_info, "HOME TASK");
 
     // delete the task
     vTaskDelete(NULL);
@@ -107,6 +138,10 @@ void button_task_3(void *arg)
         {
             fsm_state = STATE_1;
             // printf("Transitioning from HOME_STATE to STATE_1\n");
+
+            // Suspends the home task
+            vTaskSuspend(home_task_handle);
+
             i2c_lcd1602_clear(lcd_info);
             i2c_lcd1602_home(lcd_info);
             i2c_lcd1602_write_string(lcd_info, "STATE 1 TASK");
@@ -135,19 +170,8 @@ void button_task_3(void *arg)
             i2c_lcd1602_clear(lcd_info);
             i2c_lcd1602_home(lcd_info);
 
-            /*Home task - move to separate function later*/
-
-            // read the stream of data from the nrf_data_xStream
-            size_t bytes_read = 0;
-            // Create buffer for mydata.now_time
-            uint32_t *nrf_data = (uint32_t *)malloc(sizeof(uint32_t));
-            bytes_read = xStreamBufferReceive(nrf_data_xStream, (void *)nrf_data, sizeof(uint32_t), portMAX_DELAY);
-
-            // format string to print
-            char nrf_data_string[16];
-            sprintf(nrf_data_string, "%ld", *nrf_data);
-
-            i2c_lcd1602_write_string(lcd_info, nrf_data_string);
+            // Resumes the home task
+            vTaskResume(home_task_handle);
         }
     }
 }
@@ -181,25 +205,18 @@ void button_task_4(void *arg)
             i2c_lcd1602_clear(lcd_info);
             i2c_lcd1602_home(lcd_info);
 
-            /*Home task - move to separate function later*/
-
-            // read the stream of data from the nrf_data_xStream
-            size_t bytes_read = 0;
-            // Create buffer for mydata.now_time
-            uint32_t *nrf_data = (uint32_t *)malloc(sizeof(uint32_t));
-            bytes_read = xStreamBufferReceive(nrf_data_xStream, (void *)nrf_data, sizeof(uint32_t), portMAX_DELAY);
-
-            // format string to print
-            char nrf_data_string[16];
-            sprintf(nrf_data_string, "%ld", *nrf_data);
-
-            i2c_lcd1602_write_string(lcd_info, nrf_data_string);
+            // Resumes the home task
+            vTaskResume(home_task_handle);
         }
         // if in home state go to state 3
         else if (fsm_state == HOME_STATE)
         {
             fsm_state = STATE_3;
             // printf("Transitioning from HOME_STATE to STATE_3\n");
+
+            // Suspends the home task
+            vTaskSuspend(home_task_handle);
+
             i2c_lcd1602_clear(lcd_info);
             i2c_lcd1602_home(lcd_info);
             i2c_lcd1602_write_string(lcd_info, "STATE 3 TASK");
@@ -238,5 +255,24 @@ void init_buttons(void *arg)
     gpio_isr_handler_add(BUTTON_4_PIN, button_isr_handler, (void *)BUTTON_4_PIN);
     xTaskCreate(button_task_4, "button_task_4", 2048, (void *)BUTTON_4_PIN, 10, &isr_button_4);
 
+    // Create home task
+    xTaskCreate(home_task, "home_task", 1024 * 3, NULL, 2, &home_task_handle);
+
     vTaskDelete(NULL);
+}
+
+void init_ui(StreamBufferHandle_t xStream)
+{
+    nrf_data_xStream = xStream;
+    // check if the stream buffer was passed successfully
+    if (nrf_data_xStream == NULL)
+    {
+        ESP_LOGE(pcTaskGetName(0), "init_ui - Error reciving stream buffer");
+    }
+    else
+    {
+        xTaskCreate(init_display, "i2c_lcd1602_task", 2048, NULL, 10, NULL);
+
+        xTaskCreate(init_buttons, "init_buttons", 2048, NULL, 10, NULL);
+    }
 }
