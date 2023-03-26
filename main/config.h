@@ -63,10 +63,6 @@
 #define ADC1_TEST_CHANNEL (ADC1_CHANNEL_7)
 // i2s mic and adc settings
 #define V_REF   1100
-//enable record sound and save in flash
-#define RECORD_IN_FLASH_EN        (1)
-//enable replay recorded sound in flash
-#define REPLAY_FROM_FLASH_EN      (1)
 
 //i2s number for interface channel
 #define EXAMPLE_I2S_NUM           (0)
