@@ -39,12 +39,12 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
   config->twiddle_factors = (float *)malloc(2 * config->size * sizeof(float));
   assert(config->twiddle_factors != NULL);
 
-
+// twiddle factors: Wn = exp(j*2*pi*k/n) = cos(2*pi*k/n) + j*sin(2*pi*k/n)
   float two_pi_by_n = TWO_PI / config->size;
 
   for (k = 0, m = 0 ; k < config->size ; k++, m+=2)
   {
-    config->twiddle_factors[m] = cosf(two_pi_by_n * k);    // real
+    config->twiddle_factors[m] = cosf(two_pi_by_n * k);    // real 
     config->twiddle_factors[m+1] = sinf(two_pi_by_n * k);  // imag
   }
   assert(config->twiddle_factors != NULL);
