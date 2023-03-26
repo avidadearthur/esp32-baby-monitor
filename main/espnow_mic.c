@@ -47,7 +47,7 @@ void i2s_adc_capture_task(void* task_param)
          * xstreambuffersend to fft task
         */
         #if FFT_TASK
-        size_t byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, (EXAMPLE_I2S_READ_LEN/16), portMAX_DELAY);
+        size_t byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, EXAMPLE_I2S_READ_LEN/16, portMAX_DELAY);
         if (byte_sent != (EXAMPLE_I2S_READ_LEN/16)) {
             ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, (EXAMPLE_I2S_READ_LEN/16));
             deinit_config();
@@ -57,7 +57,7 @@ void i2s_adc_capture_task(void* task_param)
 
         // scale the data to 8 bit
         i2s_adc_data_scale(mic_read_buf, mic_read_buf, READ_BUF_SIZE_BYTES);
-        // mic_disp_buf((uint8_t*)mic_read_buf, READ_BUF_SIZE_BYTES);
+ 
         /**
          * xstreambuffersend is a blocking function that sends data to the stream buffer,
          * esp_now_send needs to send 128 packets of 250 bytes each, so the stream buffer needs to be able to hold at least 2-3 times of 128 * 250 bytes = BYTE_RATE bytes
@@ -77,6 +77,8 @@ void i2s_adc_capture_task(void* task_param)
             ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", record_byte, READ_BUF_SIZE_BYTES);
         }
         #endif
+
+
     }
     free(mic_read_buf);
     vTaskDelete(NULL);
@@ -98,6 +100,8 @@ void i2s_adc_data_scale(uint8_t * des_buff, uint8_t* src_buff, uint32_t len)
         des_buff[j++] = dac_value * 256 / 4096;
     }
 }
+
+
 
 // i2s dac playback task
 void i2s_dac_playback_task(void* task_param) {
