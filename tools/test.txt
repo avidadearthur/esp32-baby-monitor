@@ -13,3 +13,25 @@ how to use:
 4. implement the cry identification algorithm
     by using the same logic demonstrated in labview: identifying the pitch, number of peaks, and the range
 5. integrate ZCR and STE into the algorithm as relative parameter features
+
+
+
+- uisng i2s since i2s driver and DMA is built in in esp32. with the help of dma, the cpu of esp32
+    can release its computation resoruces to other task and only collects from DMA when interrrupt is generated from DMA
+- the challenges: 
+    - fft on i2s
+- the known process: 
+    https://github.com/atomic14/esp32_audio
+    https://www.youtube.com/watch?v=pPh3_ciEmzs&list=PLP9KdspSjAPGtEJFckSYYkPe2bW9sdzJo&index=7
+    
+    - i2s configuration
+    - i2s driver install and start i2s driver: i2s_driver_install
+    - init in-built adc: i2s-set_adc_mode
+    - enable the adc: i2s_adc_enable
+    - start a task to read smapels from i2s to cpu
+        taskhandle_t readerTaskHandle
+    - wait for some data to arrive on the queue: i2s_event_t i2s_event_t
+        // fill up the audio buffer
+        read from i2s loop while (bytesRead > 0): i2s_read
+        within the loop, i read and i process which with fftw code
+
