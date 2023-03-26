@@ -1,1 +1,0 @@
-double randn(long *idum);
