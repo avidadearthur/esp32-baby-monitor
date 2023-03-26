@@ -43,18 +43,31 @@ void home_task(void *arg)
     // read the stream of data from the nrf_data_xStream
     size_t bytes_read = 0;
     // Create buffer for mydata.now_time
-    uint32_t *nrf_data = (uint32_t *)malloc(sizeof(uint32_t));
+    uint32_t *nrf_data = (uint32_t *)malloc(sizeof(uint8_t) * 3);
+
+    uint16_t temp_combined = 0;
+    float temp_float = 0.0;
 
     while (1)
     {
         i2c_lcd1602_clear(lcd_info);
-        i2c_lcd1602_home(lcd_info);
+        i2c_lcd1602_move_cursor(lcd_info, 0, 1);
 
         // read the stream of data from the nrf_data_xStream and if there is data, print it
-        bytes_read = xStreamBufferReceive(nrf_data_xStream, (void *)nrf_data, sizeof(uint32_t), portMAX_DELAY);
+        bytes_read = xStreamBufferReceive(nrf_data_xStream, (void *)nrf_data, sizeof(uint8_t) * 3, portMAX_DELAY);
+
+        // cast nrf_data to uint8_t array
+        uint8_t *data = (uint8_t *)nrf_data;
+
+        // Combine the upper and lower bytes of the temperature into a 16-bit integer
+        temp_combined = ((uint16_t)data[1] << 8) | data[0];
+
+        // Convert the combined temperature back to a float
+        temp_float = ((float)temp_combined) / 10.0;
+
         // format string to print
-        char nrf_data_string[16];
-        sprintf(nrf_data_string, "%lu", *nrf_data);
+        char nrf_data_string[15];
+        sprintf(nrf_data_string, "%.1fC, %d", temp_float, data[2]);
 
         i2c_lcd1602_write_string(lcd_info, nrf_data_string);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -85,9 +98,6 @@ void init_display(void *xStream)
                                      LCD_NUM_ROWS, LCD_NUM_COLUMNS, LCD_NUM_VISIBLE_COLUMNS));
 
     ESP_ERROR_CHECK(i2c_lcd1602_reset(lcd_info));
-
-    i2c_lcd1602_clear(lcd_info);
-    i2c_lcd1602_home(lcd_info);
 
     // delete the task
     vTaskDelete(NULL);
@@ -143,7 +153,7 @@ void button_task_3(void *arg)
             vTaskSuspend(home_task_handle);
 
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_home(lcd_info);
+
             i2c_lcd1602_write_string(lcd_info, "STATE 1 TASK");
         }
         else if (fsm_state == STATE_1)
@@ -151,7 +161,6 @@ void button_task_3(void *arg)
             fsm_state = STATE_2;
             // printf("Transitioning from STATE_1 to STATE_2\n");
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_home(lcd_info);
             i2c_lcd1602_write_string(lcd_info, "STATE 2 TASK");
         }
         else if (fsm_state == STATE_2)
@@ -159,7 +168,6 @@ void button_task_3(void *arg)
             fsm_state = STATE_3;
             // printf("Transitioning from STATE_2 to STATE_3\n");
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_home(lcd_info);
             i2c_lcd1602_write_string(lcd_info, "STATE 3 TASK");
         }
         // if in state 3 go back to home state
@@ -168,7 +176,6 @@ void button_task_3(void *arg)
             fsm_state = HOME_STATE;
             // printf("Transitioning from STATE_3 to HOME_STATE\n");
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_home(lcd_info);
 
             // Resumes the home task
             vTaskResume(home_task_handle);
@@ -187,7 +194,6 @@ void button_task_4(void *arg)
             fsm_state = STATE_2;
             // printf("Transitioning from STATE_3 to STATE_2\n");
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_home(lcd_info);
             i2c_lcd1602_write_string(lcd_info, "STATE 2 TASK");
         }
         else if (fsm_state == STATE_2)
@@ -195,7 +201,6 @@ void button_task_4(void *arg)
             fsm_state = STATE_1;
             // printf("Transitioning from STATE_2 to STATE_1\n");
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_home(lcd_info);
             i2c_lcd1602_write_string(lcd_info, "STATE 1 TASK");
         }
         else if (fsm_state == STATE_1)
@@ -203,7 +208,6 @@ void button_task_4(void *arg)
             fsm_state = HOME_STATE;
             // printf("Transitioning from STATE_1 to HOME_STATE\n");
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_home(lcd_info);
 
             // Resumes the home task
             vTaskResume(home_task_handle);
@@ -218,7 +222,6 @@ void button_task_4(void *arg)
             vTaskSuspend(home_task_handle);
 
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_home(lcd_info);
             i2c_lcd1602_write_string(lcd_info, "STATE 3 TASK");
         }
     }
@@ -256,7 +259,7 @@ void init_buttons(void *arg)
     xTaskCreate(button_task_4, "button_task_4", 2048, (void *)BUTTON_4_PIN, 10, &isr_button_4);
 
     // Create home task
-    xTaskCreate(home_task, "home_task", 1024 * 3, NULL, 2, &home_task_handle);
+    // xTaskCreate(home_task, "home_task", 1024 * 3, NULL, 2, &home_task_handle);
 
     vTaskDelete(NULL);
 }
@@ -272,6 +275,11 @@ void init_ui(StreamBufferHandle_t xStream)
     else
     {
         xTaskCreate(init_display, "i2c_lcd1602_task", 2048, NULL, 10, NULL);
+
+        // Create home task
+        xTaskCreate(home_task, "home_task", 1024 * 3, NULL, 2, &home_task_handle);
+
+        // vTaskDelay(2000 / portTICK_PERIOD_MS);
 
         xTaskCreate(init_buttons, "init_buttons", 2048, NULL, 10, NULL);
     }
