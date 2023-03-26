@@ -70,7 +70,7 @@ void receiver(void *xStream)
     ESP_LOGI(pcTaskGetName(0), "Listening...");
 
     // Create buffer for mydata.now_time
-    uint32_t *buffer = (uint32_t *)malloc(sizeof(uint32_t));
+    uint32_t *buffer = (uint32_t *)malloc(10 * sizeof(uint32_t));
     buffer[0] = 0;
 
     while (1)
@@ -80,14 +80,9 @@ void receiver(void *xStream)
         {
             Nrf24_getData(&dev, mydata.value);
             ESP_LOGI(pcTaskGetName(0), "Got data:%lu", mydata.now_time);
-        }
-        vTaskDelay(1);
 
-        // put mydata.now_time into buffer
-        buffer[0] = mydata.now_time;
-
-        if (buffer[0] != 0)
-        {
+            // put mydata.now_time into buffer
+            buffer[0] = mydata.now_time;
             // log buffer value
             ESP_LOGI(pcTaskGetName(0), "buffer[0]=%lu", buffer[0]);
             // Send and check bytes sent
@@ -97,10 +92,7 @@ void receiver(void *xStream)
                 ESP_LOGE(pcTaskGetName(0), "Error sending data to stream buffer");
             }
         }
-        else
-        {
-            ESP_LOGW(pcTaskGetName(0), "No data received");
-        }
+        vTaskDelay(1);
     }
 }
 #endif // CONFIG_RECEIVER

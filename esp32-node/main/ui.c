@@ -57,7 +57,7 @@ void home_task(void *arg)
         sprintf(nrf_data_string, "%lu", *nrf_data);
 
         i2c_lcd1602_write_string(lcd_info, nrf_data_string);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
