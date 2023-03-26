@@ -1,5 +1,5 @@
 #include "fftpeak.h"
-
+#include "music.h"
 
 #define REP 100
 #define MIN_LOG_N 0
@@ -174,7 +174,6 @@ void fft_task(void* task_param){
         if ((freq1 > 350.0 && freq1 < 500.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
             printf("cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
             // call the init_music functoin to play from existing audio file
-            // reference: i2s_adc_dac example
             // init_music();
         }
 

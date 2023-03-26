@@ -77,10 +77,11 @@ void music_task(void*arg)
         // break loop
         break;
     }
-    // enable ADC
-    i2s_adc_enable(EXAMPLE_I2S_NUM);
     // free buffer
     free(i2s_write_buff);
+    // enable ADC
+    i2s_adc_enable(EXAMPLE_I2S_NUM);
+    // delete task
     vTaskDelete(NULL);
 }
 
