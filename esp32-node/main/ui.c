@@ -36,6 +36,75 @@ static StreamBufferHandle_t nrf_data_xStream = NULL;
 // Home task handler
 static TaskHandle_t home_task_handle = NULL;
 
+// thresh set task handler
+static TaskHandle_t tresh_task_handle = NULL;
+
+// baby flipper task handler
+static TaskHandle_t hall_alarm = NULL;
+
+#define LOG_QUEUE_SIZE 10
+
+QueueHandle_t log_queue;
+
+// define temp threshold as global variable
+float temp_threshold_min = 22.0;
+float temp_threshold_max = 24.0;
+
+static const char *TAG = "main";
+
+// define the threshold task
+void threshold_set_task(void *pvParameter)
+{
+    i2c_lcd1602_move_cursor(lcd_info, 0, 0);
+    // format string to print
+    char temp_max[15];
+    sprintf(temp_max, "%.1f", temp_threshold_max);
+    i2c_lcd1602_write_string(lcd_info, temp_max);
+
+    i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+    i2c_lcd1602_write_char(lcd_info, 'C');
+
+    i2c_lcd1602_move_cursor(lcd_info, 0, 1);
+    // format string to print
+    char temp_min[15];
+    sprintf(temp_min, "%.1f", temp_threshold_min);
+    i2c_lcd1602_write_string(lcd_info, temp_min);
+
+    i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+    i2c_lcd1602_write_char(lcd_info, 'C');
+    while (1)
+    {
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
+}
+
+void datetime_task(void *pvParameter)
+{
+    time_t now = 0;
+    struct tm timeinfo = {0};
+    // Wait for the time to be synchronized
+    while (timeinfo.tm_year < (2020 - 1900))
+    {
+        ESP_LOGI(TAG, "Sync ntptime...");
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        time(&now);
+        localtime_r(&now, &timeinfo);
+    }
+    char strftime_buf[64];
+    while (1)
+    {
+        // Log the current date and time
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        strftime(strftime_buf, sizeof(strftime_buf), "%H:%M %a %d/%m", &timeinfo);
+        xQueueSend(log_queue, &strftime_buf, portMAX_DELAY);
+
+        // Update the date/time every second
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        sntp_init();
+    }
+}
+
 void home_task(void *arg)
 {
     /*Home task - move to separate function later*/
@@ -48,9 +117,18 @@ void home_task(void *arg)
     uint16_t temp_combined = 0;
     float temp_float = 0.0;
 
+    char datetime_str[16];
+
     while (1)
     {
-        i2c_lcd1602_clear(lcd_info);
+        // i2c_lcd1602_clear(lcd_info);
+        i2c_lcd1602_move_cursor(lcd_info, 0, 0);
+
+        if (xQueueReceive(log_queue, &datetime_str, 100))
+        {
+            i2c_lcd1602_write_string(lcd_info, datetime_str);
+        }
+
         i2c_lcd1602_move_cursor(lcd_info, 0, 1);
 
         // read the stream of data from the nrf_data_xStream and if there is data, print it
@@ -67,9 +145,23 @@ void home_task(void *arg)
 
         // format string to print
         char nrf_data_string[15];
-        sprintf(nrf_data_string, "%.1fC, %d", temp_float, data[2]);
-
+        sprintf(nrf_data_string, "%.1f", temp_float);
         i2c_lcd1602_write_string(lcd_info, nrf_data_string);
+
+        i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+        i2c_lcd1602_write_char(lcd_info, 'C');
+
+        if (temp_float < temp_threshold_min || temp_float > temp_threshold_max)
+        {
+            i2c_lcd1602_move_cursor(lcd_info, 7, 1);
+            i2c_lcd1602_write_string(lcd_info, "!");
+        }
+        else
+        {
+            i2c_lcd1602_move_cursor(lcd_info, 7, 1);
+            i2c_lcd1602_write_string(lcd_info, " ");
+        }
+
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
@@ -165,20 +257,8 @@ void button_task_3(void *arg)
         }
         else if (fsm_state == STATE_2)
         {
-            fsm_state = STATE_3;
-            // printf("Transitioning from STATE_2 to STATE_3\n");
-            i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_write_string(lcd_info, "STATE 3 TASK");
-        }
-        // if in state 3 go back to home state
-        else if (fsm_state == STATE_3)
-        {
-            fsm_state = HOME_STATE;
-            // printf("Transitioning from STATE_3 to HOME_STATE\n");
-            i2c_lcd1602_clear(lcd_info);
-
-            // Resumes the home task
-            vTaskResume(home_task_handle);
+            fsm_state = STATE_2;
+            // printf("Transitioning from STATE_2 to HOME\n");
         }
     }
 }
@@ -189,12 +269,9 @@ void button_task_4(void *arg)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         // Change FSM state to the previous state and print state transition
-        if (fsm_state == STATE_3)
+        if (fsm_state == HOME_STATE)
         {
-            fsm_state = STATE_2;
-            // printf("Transitioning from STATE_3 to STATE_2\n");
-            i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_write_string(lcd_info, "STATE 2 TASK");
+            fsm_state = HOME_STATE;
         }
         else if (fsm_state == STATE_2)
         {
@@ -211,18 +288,6 @@ void button_task_4(void *arg)
 
             // Resumes the home task
             vTaskResume(home_task_handle);
-        }
-        // if in home state go to state 3
-        else if (fsm_state == HOME_STATE)
-        {
-            fsm_state = STATE_3;
-            // printf("Transitioning from HOME_STATE to STATE_3\n");
-
-            // Suspends the home task
-            vTaskSuspend(home_task_handle);
-
-            i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_write_string(lcd_info, "STATE 3 TASK");
         }
     }
 }
@@ -274,12 +339,15 @@ void init_ui(StreamBufferHandle_t xStream)
     }
     else
     {
-        xTaskCreate(init_display, "i2c_lcd1602_task", 2048, NULL, 10, NULL);
+        log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(char[64]));
 
+        vTaskDelay(200 / portTICK_PERIOD_MS);
         // Create home task
         xTaskCreate(home_task, "home_task", 1024 * 3, NULL, 2, &home_task_handle);
 
-        // vTaskDelay(2000 / portTICK_PERIOD_MS);
+        xTaskCreate(datetime_task, "datetime_task", 4096, NULL, 5, NULL);
+
+        xTaskCreate(init_display, "i2c_lcd1602_task", 2048, NULL, 10, NULL);
 
         xTaskCreate(init_buttons, "init_buttons", 2048, NULL, 10, NULL);
     }
