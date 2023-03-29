@@ -9,9 +9,10 @@
 typedef enum
 {
     HOME_STATE,
-    STATE_1,
-    STATE_2,
-    STATE_3
+    DISPLAY_TEMP_STATE,
+    DISPLAY_MUSIC_STATE,
+    SET_MUSIC_STATE,
+    FLIP_ALARM
 } fsm_state_t;
 
 // Initialize the FSM state to HOME_STATE
@@ -36,45 +37,50 @@ static StreamBufferHandle_t nrf_data_xStream = NULL;
 // Home task handler
 static TaskHandle_t home_task_handle = NULL;
 
-// thresh set task handler
-static TaskHandle_t tresh_task_handle = NULL;
+// baby flipper task handler
+static TaskHandle_t hall_alarm_handle = NULL;
 
 // baby flipper task handler
-static TaskHandle_t hall_alarm = NULL;
+static TaskHandle_t music_task_handle = NULL;
+
+// baby flipping alarm
+static TaskHandle_t flip_alarm_handle = NULL;
 
 #define LOG_QUEUE_SIZE 10
 
 QueueHandle_t log_queue;
 
+// define a mutex for the temperature
+SemaphoreHandle_t temp_mutex = NULL;
+
 // define temp threshold as global variable
 float temp_threshold_min = 22.0;
 float temp_threshold_max = 24.0;
+// format string to print
+char temp_max[15];
+char temp_min[15];
+
+// define a mutex for the music
+SemaphoreHandle_t music_mutex = NULL;
+
+// music state
+char auto_music = 0;
 
 static const char *TAG = "main";
 
 // define the threshold task
-void threshold_set_task(void *pvParameter)
+void set_music_task(void *pvParameter)
 {
-    i2c_lcd1602_move_cursor(lcd_info, 0, 0);
-    // format string to print
-    char temp_max[15];
-    sprintf(temp_max, "%.1f", temp_threshold_max);
-    i2c_lcd1602_write_string(lcd_info, temp_max);
-
-    i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
-    i2c_lcd1602_write_char(lcd_info, 'C');
+    // log the task start
+    ESP_LOGI(TAG, "set_music_task started");
 
     i2c_lcd1602_move_cursor(lcd_info, 0, 1);
-    // format string to print
-    char temp_min[15];
-    sprintf(temp_min, "%.1f", temp_threshold_min);
-    i2c_lcd1602_write_string(lcd_info, temp_min);
+    i2c_lcd1602_set_blink(lcd_info, true);
 
-    i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
-    i2c_lcd1602_write_char(lcd_info, 'C');
     while (1)
     {
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -107,8 +113,6 @@ void datetime_task(void *pvParameter)
 
 void home_task(void *arg)
 {
-    /*Home task - move to separate function later*/
-
     // read the stream of data from the nrf_data_xStream
     size_t bytes_read = 0;
     // Create buffer for mydata.now_time
@@ -162,7 +166,7 @@ void home_task(void *arg)
             i2c_lcd1602_write_string(lcd_info, " ");
         }
 
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
@@ -215,8 +219,6 @@ void button_task_1(void *arg)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        // Increment counter and print counter value
-        // printf("Button 1 pressed in state %d\n", fsm_state);
     }
 }
 
@@ -225,8 +227,6 @@ void button_task_2(void *arg)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        // Increment counter and print counter value
-        // printf("Button 2 pressed in state %d\n", fsm_state);
     }
 }
 
@@ -238,27 +238,38 @@ void button_task_3(void *arg)
         // Change FSM state to the next state and print state transition
         if (fsm_state == HOME_STATE)
         {
-            fsm_state = STATE_1;
-            // printf("Transitioning from HOME_STATE to STATE_1\n");
-
-            // Suspends the home task
+            fsm_state = DISPLAY_TEMP_STATE;
+            // transition from HOME_STATE to DISPLAY_TEMP_STATE
             vTaskSuspend(home_task_handle);
-
             i2c_lcd1602_clear(lcd_info);
 
-            i2c_lcd1602_write_string(lcd_info, "STATE 1 TASK");
+            // display the current temperature thresholds
+            i2c_lcd1602_move_cursor(lcd_info, 0, 0);
+            sprintf(temp_max, "Thr Max: %.1f", temp_threshold_max);
+            i2c_lcd1602_write_string(lcd_info, temp_max);
+            i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+            i2c_lcd1602_write_char(lcd_info, 'C');
+
+            i2c_lcd1602_move_cursor(lcd_info, 0, 1);
+            sprintf(temp_min, "Thr Min: %.1f", temp_threshold_min);
+            i2c_lcd1602_write_string(lcd_info, temp_min);
+            i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+            i2c_lcd1602_write_char(lcd_info, 'C');
         }
-        else if (fsm_state == STATE_1)
+        else if (fsm_state == DISPLAY_TEMP_STATE)
         {
-            fsm_state = STATE_2;
-            // printf("Transitioning from STATE_1 to STATE_2\n");
+            // transition from DISPLAY_TEMP_STATE to DISPLAY_MUSIC_STATE
             i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_write_string(lcd_info, "STATE 2 TASK");
-        }
-        else if (fsm_state == STATE_2)
-        {
-            fsm_state = STATE_2;
-            // printf("Transitioning from STATE_2 to HOME\n");
+
+            i2c_lcd1602_move_cursor(lcd_info, 0, 0);
+            i2c_lcd1602_write_string(lcd_info, "AUTO MUSIC:");
+            i2c_lcd1602_move_cursor(lcd_info, 0, 1);
+
+            // get mutex to read the auto_music variable
+            if (auto_music)
+                i2c_lcd1602_write_string(lcd_info, "ON");
+            else
+                i2c_lcd1602_write_string(lcd_info, "OFF");
         }
     }
 }
@@ -268,26 +279,33 @@ void button_task_4(void *arg)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        // Change FSM state to the previous state and print state transition
-        if (fsm_state == HOME_STATE)
+
+        if (fsm_state == DISPLAY_TEMP_STATE)
         {
+            // transition from DISPLAY_TEMP_STATE to HOME_STATE
             fsm_state = HOME_STATE;
-        }
-        else if (fsm_state == STATE_2)
-        {
-            fsm_state = STATE_1;
-            // printf("Transitioning from STATE_2 to STATE_1\n");
-            i2c_lcd1602_clear(lcd_info);
-            i2c_lcd1602_write_string(lcd_info, "STATE 1 TASK");
-        }
-        else if (fsm_state == STATE_1)
-        {
-            fsm_state = HOME_STATE;
-            // printf("Transitioning from STATE_1 to HOME_STATE\n");
             i2c_lcd1602_clear(lcd_info);
 
-            // Resumes the home task
             vTaskResume(home_task_handle);
+        }
+        else if (fsm_state == DISPLAY_MUSIC_STATE)
+        {
+            // transition from DISPLAY_MUSIC_STATE to DISPLAY_TEMP_STATE
+            fsm_state = DISPLAY_TEMP_STATE;
+            i2c_lcd1602_clear(lcd_info);
+
+            // display the current temperature thresholds
+            i2c_lcd1602_move_cursor(lcd_info, 0, 0);
+            sprintf(temp_max, "Thr Max: %.1f", temp_threshold_max);
+            i2c_lcd1602_write_string(lcd_info, temp_max);
+            i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+            i2c_lcd1602_write_char(lcd_info, 'C');
+
+            i2c_lcd1602_move_cursor(lcd_info, 0, 1);
+            sprintf(temp_min, "Thr Min: %.1f", temp_threshold_min);
+            i2c_lcd1602_write_string(lcd_info, temp_min);
+            i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+            i2c_lcd1602_write_char(lcd_info, 'C');
         }
     }
 }
@@ -342,13 +360,13 @@ void init_ui(StreamBufferHandle_t xStream)
         log_queue = xQueueCreate(LOG_QUEUE_SIZE, sizeof(char[64]));
 
         vTaskDelay(200 / portTICK_PERIOD_MS);
-        // Create home task
-        xTaskCreate(home_task, "home_task", 1024 * 3, NULL, 2, &home_task_handle);
 
-        xTaskCreate(datetime_task, "datetime_task", 4096, NULL, 5, NULL);
+        // Create home task
+        xTaskCreate(home_task, "home_task", 2048, NULL, 2, &home_task_handle);
+
+        xTaskCreate(datetime_task, "datetime_task", 2048, NULL, 5, NULL);
 
         xTaskCreate(init_display, "i2c_lcd1602_task", 2048, NULL, 10, NULL);
-
         xTaskCreate(init_buttons, "init_buttons", 2048, NULL, 10, NULL);
     }
 }
