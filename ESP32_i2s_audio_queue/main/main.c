@@ -16,7 +16,7 @@
 #include "sdkconfig.h"
 #include "esp_adc_cal.h"
 #include "driver/adc.h"
-#include "freertos/queue.h"
+#include "freertos/stream_buffer.h"
 
 #define V_REF 1100
 
@@ -53,11 +53,11 @@ sdmmc_card_t *card;
 
 static int16_t i2s_readraw_buff[SAMPLE_SIZE];
 static uint8_t i2s_scaled_buff[SAMPLE_SIZE]; // I2S buffer scaled from 12 to 8-bit
-size_t bytes_read;
+static uint8_t i2s_stream_buff[SAMPLE_SIZE];
 const int WAVE_HEADER_SIZE = 44;
 
-// xQueueHandle samples_queue;
-xQueueHandle xPointerQueue;
+// xStreamBufferCreateStatic() is used to create a stream buffer that is used to transmitt audio between the I2S and SD card tasks.
+static StreamBufferHandle_t mic_stream_buf;
 
 /**
  * @brief Initializes the slot without card detect (CD) and write protect (WP) signals.
@@ -198,6 +198,8 @@ void i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
  */
 void audio_read()
 {
+    size_t bytes_read = 0;
+
     i2s_adc_enable(I2S_CHANNEL_NUM);
     while (1)
     {
@@ -206,8 +208,9 @@ void audio_read()
         i2s_read(I2S_CHANNEL_NUM, (char *)i2s_readraw_buff, SAMPLE_SIZE, &bytes_read, 100);
         // Scale will cause some clipping, but it's ok for this example
         i2s_adc_data_scale(i2s_scaled_buff, i2s_readraw_buff, bytes_read);
-        // for unit8_t in i2s_scaled_buff, send it to the queue
-        xQueueSend(xPointerQueue, (void *)&i2s_scaled_buff, portMAX_DELAY);
+
+        // for unit8_t in i2s_scaled_buff, send it to the stream buffer
+        xStreamBufferSend(mic_stream_buf, i2s_scaled_buff, SAMPLE_SIZE, portMAX_DELAY);
     }
 }
 
@@ -244,16 +247,26 @@ void record_wav(uint32_t rec_time)
     // Write the header to the WAV file
     fwrite(wav_header_fmt, 1, WAVE_HEADER_SIZE, f);
 
-    xTaskCreate(audio_read, "audio_read", 1024 * 3, NULL, 2, NULL);
-    // declare pointer that can point to i2s_scaled_buff
-    static uint8_t *i2s_scaled_buff_ptr;
+    // if task create fails; log error and return
+    if (xTaskCreate(audio_read, "audio_read", 1024 * 4, NULL, 10, NULL) != pdPASS)
+    {
+        ESP_LOGE(TAG, "Failed to create audio_read task");
+        return;
+    }
+
+    size_t bytes_read = 0;
 
     // Start recording
     while (flash_wr_size < flash_rec_size)
     {
-        xQueueReceive(xPointerQueue, &i2s_scaled_buff_ptr, portMAX_DELAY);
-        fwrite(i2s_scaled_buff_ptr, 1, bytes_read, f);
+        size_t bytes_read = xStreamBufferReceive(mic_stream_buf, (void *)i2s_stream_buff,
+                                                 sizeof(i2s_stream_buff), portMAX_DELAY);
+
+        fwrite(i2s_stream_buff, 1, bytes_read, f);
+
         flash_wr_size += bytes_read;
+        // Log percentage of recording
+        ESP_LOGI(TAG, "Recording: %d%%", (flash_wr_size * 100) / flash_rec_size);
     }
     // kill audio_read task
     vTaskDelete(audio_read);
@@ -277,7 +290,7 @@ void adc_read_task(void *arg)
 void app_main(void)
 {
     int rec_time = 10;
-    xPointerQueue = xQueueCreate(256, sizeof(&i2s_scaled_buff));
+    mic_stream_buf = xStreamBufferCreate(512, 1);
 
     ESP_LOGI(TAG, "Analog microphone recording Example start");
     // Mount the SDCard for recording the audio file

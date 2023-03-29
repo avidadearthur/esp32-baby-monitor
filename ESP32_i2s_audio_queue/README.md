@@ -7,3 +7,5 @@ info about xQueue: https://www.freertos.org/a00118.html
 ### 17/02/2023  12:00 AM  Arthur
 I tried to follow the example from the xQueue docs and use the queue to store pointers to the buffers. Now the recording starts but never ends. It is probably not reading the data from the queue. I am not sure how to solve this.
 S.O.S.
+
+### 18/02/2023  12:00 AM  Arthur

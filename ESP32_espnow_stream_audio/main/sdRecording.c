@@ -116,7 +116,7 @@ void write_task(void *arg)
     generate_wav_header(wav_header_fmt, flash_rec_size, I2S_SAMPLE_RATE);
 
     // log the size of the recording
-    ESP_LOGI(TAG, "Opening file - recording size: %d", flash_rec_size);
+    ESP_LOGI(TAG, "Opening file - recording size: %lu", flash_rec_size);
 
     // First check if file exists before creating a new file.
     struct stat st;
@@ -166,7 +166,7 @@ void write_task(void *arg)
             fwrite(ucRxData, 1, xReceivedBytes, f);
             flash_wr_size += xReceivedBytes;
             // Log the amount of bytes and the percentage of the recording
-            ESP_LOGI(TAG, "Wrote %d %d/%d bytes to file - %d%%", xReceivedBytes, flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
+            ESP_LOGI(TAG, "Wrote %d %d/%lu bytes to file - %lu%%", xReceivedBytes, flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
         }
         else
         {
@@ -207,7 +207,7 @@ void read_task(void *arg)
     fseek(f, 40, SEEK_SET);
     uint32_t flash_rec_size;
     fread(&flash_rec_size, 1, 4, f);
-    ESP_LOGI(TAG, "Opening file - recording size: %d", flash_rec_size);
+    ESP_LOGI(TAG, "Opening file - recording size: %lu", flash_rec_size);
 
     // Skip the header from the WAV file
     fseek(f, WAVE_HEADER_SIZE - 40, SEEK_SET);
@@ -240,7 +240,7 @@ void read_task(void *arg)
             if (xBytesSent > 0)
             {
                 total_bytes_read += bytes_read;
-                ESP_LOGI(TAG, "Read %d %d/%d bytes from file - %d%%", xBytesSent, total_bytes_read, flash_rec_size, (total_bytes_read * 100) / flash_rec_size);
+                ESP_LOGI(TAG, "Read %d %d/%lu bytes from file - %lu%%", xBytesSent, total_bytes_read, flash_rec_size, (total_bytes_read * 100) / flash_rec_size);
             }
         }
         else

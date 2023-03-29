@@ -167,12 +167,15 @@ void record_wav(uint32_t rec_time)
 {
     // Use POSIX and C standard library functions to work with files.
     int flash_wr_size = 0;
-    ESP_LOGI(TAG, "Opening file");
+    ESP_LOGI(TAG, "");
 
     char wav_header_fmt[WAVE_HEADER_SIZE];
 
     uint32_t flash_rec_size = BYTE_RATE * rec_time;
     generate_wav_header(wav_header_fmt, flash_rec_size, I2S_SAMPLE_RATE);
+
+    // log the size of the recording
+    ESP_LOGI(TAG, "Opening file - recording size: %d", flash_rec_size);
 
     // First check if file exists before creating a new file.
     struct stat st;
@@ -208,6 +211,8 @@ void record_wav(uint32_t rec_time)
         // Write the samples to the WAV file
         fwrite(i2s_readraw_buff, 1, bytes_read, f);
         flash_wr_size += bytes_read;
+        // Log the amount of bytes and the percentage of the recording
+        ESP_LOGI(TAG, "Wrote %d/%d bytes to file - %d%%", bytes_read, flash_wr_size, (flash_wr_size * 100) / flash_rec_size);
     }
 
     ESP_LOGI(TAG, "Recording done!");

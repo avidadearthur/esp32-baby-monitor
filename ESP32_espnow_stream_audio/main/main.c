@@ -16,11 +16,11 @@
 #include "sdRecording.h"
 #include "transport.h"
 
-#define ESP_NOW_TRANSPORT (true)
-#define ESP_NOW_SENDER (true) // if false, it will be a receiver
+#define ESP_NOW_TRANSPORT (false)
+#define ESP_NOW_SENDER (false) // if false, it will be a receiver
 #define REC_NETWORK (false)
 
-#define REC_MIC (false)
+#define REC_MIC (true)
 #define REC_MIC_AND_PLAY (false)
 
 #define READ_FROM_SD_AND_SEND_TO_DSP (false)
@@ -85,14 +85,18 @@ void app_main()
     init_transport();
     init_sender(xStreamBufferMic);
 
+    /*LCD display stuff*/
+    // lcd_task_init();
+    /*-------------------*/
+
     // Replace with button interrupt
     // Create a timer that will expire in 50 seconds (10,000,000 microseconds).
-    esp_timer_handle_t timer_handle;
-    esp_timer_create_args_t timer_args = {
-        .callback = timer_callback,
-        .name = "my_timer"};
-    esp_timer_create(&timer_args, &timer_handle);
-    esp_timer_start_once(timer_handle, 50000000);
+    // esp_timer_handle_t timer_handle;
+    // esp_timer_create_args_t timer_args = {
+    //     .callback = timer_callback,
+    //     .name = "my_timer"};
+    // esp_timer_create(&timer_args, &timer_handle);
+    // esp_timer_start_once(timer_handle, 50000000);
 #endif
 
 #if ESP_NOW_TRANSPORT & (!ESP_NOW_SENDER)

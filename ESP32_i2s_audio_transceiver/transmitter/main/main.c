@@ -1,9 +1,3 @@
-/* Mirf Example
-     This example code is in the Public Domain (or CC0 licensed, at your option.)
-     Unless required by applicable law or agreed to in writing, this
-     software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-     CONDITIONS OF ANY KIND, either express or implied.
-*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,8 +29,8 @@
 #define I2S_COMM_MODE 0 // ADC/DAC Mode
 #define I2S_SAMPLE_RATE 44100
 #define I2S_SAMPLE_BITS (16)
-#define I2S_BUF_DEBUG (0)       // enable display buffer for debug
-#define I2S_READ_LEN (16 * 512) // I2S read buffer length
+#define I2S_BUF_DEBUG (0)      // enable display buffer for debug
+#define I2S_READ_LEN (16 * 32) // I2S read buffer length
 #define I2S_FORMAT (I2S_CHANNEL_FMT_ONLY_RIGHT)
 #define I2S_CHANNEL_NUM (0)            // I2S channel number
 #define I2S_ADC_UNIT ADC_UNIT_1        // I2S built-in ADC unit
@@ -44,10 +38,14 @@
 #define BIT_SAMPLE (16)
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
 #define NUM_CHANNELS (1) // For mono recording only!
-#define SAMPLE_SIZE (BIT_SAMPLE * 512)
+#define SAMPLE_SIZE (BIT_SAMPLE * 32)
 #define BYTE_RATE (I2S_SAMPLE_RATE * (BIT_SAMPLE / 8)) * NUM_CHANNELS
 
-xQueueHandle samples_queue;
+// xQueueHandle samples_queue;
+xQueueHandle demo_queue;
+
+// Create a mutex to protect the queue
+SemaphoreHandle_t queueMutex;
 
 /**
  * @brief I2S ADC mode init.
@@ -70,6 +68,7 @@ void init_microphone(void)
     ESP_ERROR_CHECK(i2s_driver_install(i2s_num, &i2s_config, 0, NULL));
     ESP_ERROR_CHECK(i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL));
 }
+
 /**
  * @brief Scale data to 8bit for data from ADC.
  *        Data from ADC are 12bit width by default.
@@ -81,7 +80,7 @@ void i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
 {
     uint32_t j = 0;
     uint32_t dac_value = 0;
-#if (EXAMPLE_I2S_SAMPLE_BITS == 16)
+#if (I2S_SAMPLE_BITS == 16)
     for (int i = 0; i < len; i += 2)
     {
         dac_value = ((((uint16_t)(s_buff[i + 1] & 0xf) << 8) | ((s_buff[i + 0]))));
@@ -100,37 +99,37 @@ void i2s_adc_data_scale(uint8_t *d_buff, uint8_t *s_buff, uint32_t len)
 #endif
 }
 /**
- * @brief I2S ADC mode read data.
- * @param i2s_num: I2S port number
- * @param i2s_readraw_buff: I2S read buffer
- * @param i2s_scaled_buff: I2S buffer scaled from 12 to 8-bit
- * @param bytes_read: length of data read
+ * @brief Uses i2s_read function to read data from ADC, and scale data to 8bit then put it at the end of the queue.
  */
 void audio_read()
 {
-    // use i2s_read function to read data from ADC
-    // scale data to 8bit
-    // put it at the end of the queue
+    // static int16_t i2s_readraw_buff[SAMPLE_SIZE]; // I2S read buffer, contains acctually 12-bit data
+    // uint8_t i2s_scaled_buff[SAMPLE_SIZE];         // I2S buffer scaled from 12 to 8-bit
+    // size_t bytes_read;
 
-    static int16_t i2s_readraw_buff[SAMPLE_SIZE]; // I2S read buffer, contains acctually 12-bit data
-    uint8_t i2s_scaled_buff[SAMPLE_SIZE];         // I2S buffer scaled from 12 to 8-bit
-    size_t bytes_read;
-
-    i2s_adc_enable(I2S_CHANNEL_NUM);
+    // i2s_adc_enable(I2S_CHANNEL_NUM);
+    // init an uint8_t buff with 32 uint8_t elements
+    uint8_t txpos[] = {99, 2, 3, 4, 9, 2, 3, 4, 99, 2, 3, 4, 99, 2, 3, 4, 99, 2, 3, 4, 99, 2, 3, 4, 99, 2, 3, 4, 99, 2, 3, 4}; //
 
     // change to a certain limited amount of time
     while (1)
     {
         // Read the RAW samples from the microphone
         // Read data from I2S bus, in this case, from ADC. //
-        i2s_read(I2S_CHANNEL_NUM, (void *)i2s_readraw_buff, SAMPLE_SIZE, &bytes_read, 100);
+        // i2s_read(I2S_CHANNEL_NUM, (void *)i2s_readraw_buff, SAMPLE_SIZE, &bytes_read, 100);
         // process data and scale to 8bit for I2S DAC.
-        i2s_adc_data_scale(i2s_scaled_buff, (uint8_t *)i2s_readraw_buff, SAMPLE_SIZE);
+        // i2s_adc_data_scale(i2s_scaled_buff, (uint8_t *)i2s_readraw_buff, SAMPLE_SIZE);
 
-        if (xQueueSendToBack(samples_queue, &i2s_scaled_buff, 6000 / portTICK_RATE_MS) != pdTRUE)
+        xSemaphoreTake(queueMutex, portMAX_DELAY);
+        if (xQueueSendToBack(demo_queue, &txpos, 6000 / portTICK_RATE_MS) != pdTRUE)
         {
             ESP_LOGI(pcTaskGetName(0), "Failed to queue sample");
         }
+        else
+        {
+            ESP_LOGI(pcTaskGetName(0), "Queued sample");
+        }
+        xSemaphoreGive(queueMutex);
     }
 }
 
@@ -162,33 +161,46 @@ void transmitter(void *pvParameters)
 #endif // CONFIG_ADVANCED
 
     // Print settings
-    Nrf24_printDetails(&dev);
+    // Nrf24_printDetails(&dev);
 
     // Start transmission
     while (1)
     {
-        if (xQueueReceive(samples_queue, &nrf_buff, 6000 / portTICK_RATE_MS) != pdTRUE)
+        xSemaphoreTake(queueMutex, portMAX_DELAY);
+        if (xQueueReceive(demo_queue, &nrf_buff, 6000 / portTICK_RATE_MS) != pdTRUE)
         {
             ESP_LOGI(pcTaskGetName(0), "Failed to receive queued value");
         }
-
-        Nrf24_send(&dev, nrf_buff);
-
-        if (Nrf24_isSend(&dev, 1000))
-        {
-            ESP_LOGI(pcTaskGetName(0), "sending audio data ...");
-        }
         else
         {
-            ESP_LOGI(pcTaskGetName(0), "sending audio failed ...");
+            ESP_LOGI(pcTaskGetName(0), "Received queued value");
+            Nrf24_send(&dev, nrf_buff);
+            // print the data
+            for (int i = 0; i < payload; i++)
+            {
+                ESP_LOGI(pcTaskGetName(0), "nrf_buff[%d] = %d", i, nrf_buff[i]);
+            }
+
+            if (Nrf24_isSend(&dev, 1000))
+            {
+
+                ESP_LOGI(pcTaskGetName(0), "Sending audio data ...");
+            }
+            else
+            {
+                ESP_LOGI(pcTaskGetName(0), "Sending audio failed ...");
+            }
         }
+        xSemaphoreGive(queueMutex);
     }
 }
 
 void app_main(void)
 {
-    init_microphone();
-    samples_queue = xQueueCreate(40000, sizeof(uint8_t));
+    // init_microphone();
+    // samples_queue = xQueueCreate(1000, sizeof(uint8_t));
+    demo_queue = xQueueCreate(128, sizeof(uint8_t));
+    queueMutex = xSemaphoreCreateMutex();
     xTaskCreate(audio_read, "audio_read", 1024 * 3, NULL, 2, NULL);
     xTaskCreate(transmitter, "transmitter", 1024 * 3, NULL, 2, NULL);
 }

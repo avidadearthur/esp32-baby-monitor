@@ -45,7 +45,7 @@ static void receiver_callback(const uint8_t *mac_addr, const uint8_t *data, int 
     // params of espnow_recv_task is recieved from esp_now_send(mac_addr, buffer, len)
     if (xStreamBufferSend(network_stream_buf, data, len, portMAX_DELAY) != len)
     {
-        ESP_LOGE(TAG, "Failed to send data to network stream buffer: %d", errno);
+        ESP_LOGE(TAG, "Failed to send data to network stream buffer");
     }
 }
 

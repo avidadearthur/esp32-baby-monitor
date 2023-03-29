@@ -154,7 +154,7 @@ void recording_task(void *arg)
 
     // Use POSIX and C standard library functions to work with files.
     int flash_wr_size = 0;
-    int rec_time = 5; // seconds
+    int rec_time = 10; // seconds
 
     char wav_header_fmt[WAVE_HEADER_SIZE];
 
