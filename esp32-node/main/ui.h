@@ -5,3 +5,4 @@
 #include "wifi_station.h"
 
 void init_ui(StreamBufferHandle_t xStream);
+void init_simple_transmission(StreamBufferHandle_t xStream);

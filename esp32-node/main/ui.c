@@ -369,3 +369,34 @@ void init_ui(StreamBufferHandle_t xStream)
         xTaskCreate(init_buttons, "init_buttons", 2048, NULL, 10, NULL);
     }
 }
+
+void init_simple_transmission(StreamBufferHandle_t xStream)
+{
+    nrf_data_xStream = xStream;
+
+    // read the stream of data from the nrf_data_xStream
+    size_t bytes_read = 0;
+    // Create buffer for mydata.now_time
+    uint32_t *nrf_data = (uint32_t *)malloc(sizeof(uint8_t) * 3);
+
+    // check if the stream buffer was passed successfully
+    if (nrf_data_xStream == NULL)
+    {
+        ESP_LOGE(pcTaskGetName(0), "init_ui - Error reciving stream buffer");
+    }
+    while (1)
+    {
+        // read the stream of data from the nrf_data_xStream and if there is data, print it
+        bytes_read = xStreamBufferReceive(nrf_data_xStream, (void *)nrf_data, sizeof(uint8_t) * 3, portMAX_DELAY);
+
+        // cast nrf_data to uint8_t array
+        uint8_t *data = (uint8_t *)nrf_data;
+
+        // allocate memory for the log buffer
+        char *log_buffer = (char *)malloc(sizeof(char) * 64);
+
+        // log the data received
+        sprintf(log_buffer, "init_simple_transmission - Data received: %d, %d, %d", data[0], data[1], data[2]);
+        ESP_LOGI(pcTaskGetName(0), "%s", log_buffer);
+    }
+}

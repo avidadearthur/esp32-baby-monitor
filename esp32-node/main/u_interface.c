@@ -35,6 +35,10 @@ static const char *TAG = "u_interface.c";
 // define temp threshold as global variable
 float temp_threshold_min = 22.0;
 float temp_threshold_max = 24.0;
+
+// for the changing state of the threshold
+float new_temp_threshold_max;
+
 // define current max and min temp as global variable
 float current_max_temp = 0.0;
 float current_min_temp = 0.0;
@@ -65,6 +69,12 @@ void IRAM_ATTR up_button_isr_handler(void *arg)
         {
             current_state = DISPLAY_MUSIC_STATE;
         }
+        else if (current_state == SET_MAX_TEMP_THRESHOLD)
+        {
+            new_temp_threshold_max = new_temp_threshold_max + 1;
+            current_state = SET_MAX_TEMP_THRESHOLD;
+        }
+
         xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 
@@ -95,6 +105,11 @@ void IRAM_ATTR down_button_isr_handler(void *arg)
         {
             current_state = DISPLAY_HOME_STATE;
         }
+        else if (current_state == SET_MAX_TEMP_THRESHOLD)
+        {
+            new_temp_threshold_max = new_temp_threshold_max - 1;
+            current_state = SET_MAX_TEMP_THRESHOLD;
+        }
 
         xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -110,7 +125,17 @@ void IRAM_ATTR set_button_isr_handler(void *arg)
 
     if ((isr_time - last_button_isr_time) > pdMS_TO_TICKS(BUTTON_DEBOUNCE_TIME_MS))
     {
-        if (current_state == DISPLAY_MUSIC_STATE)
+        if (current_state == DISPLAY_MAX_TEMP_THRESHOLD) // enter temp setting mode
+        {
+            new_temp_threshold_max = temp_threshold_max;
+            current_state = SET_MAX_TEMP_THRESHOLD;
+        }
+        else if (current_state == SET_MAX_TEMP_THRESHOLD) // confirm temp setting
+        {
+            temp_threshold_max = new_temp_threshold_max;
+            current_state = DISPLAY_MAX_TEMP_THRESHOLD;
+        }
+        else if (current_state == DISPLAY_MUSIC_STATE)
         {
             current_state = SET_MUSIC_STATE;
         }
@@ -136,7 +161,11 @@ void IRAM_ATTR cancel_button_isr_handler(void *arg)
 
     if ((isr_time - last_button_isr_time) > pdMS_TO_TICKS(BUTTON_DEBOUNCE_TIME_MS))
     {
-        if (current_state == SET_MUSIC_STATE)
+        if (current_state == SET_MAX_TEMP_THRESHOLD) // cancel temp setting
+        {
+            current_state = DISPLAY_MAX_TEMP_THRESHOLD;
+        }
+        else if (current_state == SET_MUSIC_STATE)
         {
             current_state = DISPLAY_MUSIC_STATE;
         }
@@ -213,6 +242,7 @@ void init_u_interface(void)
                 // log the current state
                 ESP_LOGI(TAG, "Current state: SET_MAX_TEMP_THRESHOLD");
 
+                ESP_LOGI(TAG, "Updated max temp threshold: %.2f", temp_threshold_max);
                 break;
 
             case DISPLAY_MIN_TEMP_THRESHOLD:
