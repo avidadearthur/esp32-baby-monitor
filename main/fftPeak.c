@@ -1,6 +1,5 @@
 #include "fftpeak.h"
 #include "music.h"
-#include "espnow_mic.h"
 
 
 #define REP 100
@@ -187,9 +186,8 @@ void fft_task(void* task_param){
             ESP_LOGI(TAG, "cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
             // call the init_music functoin to play from existing audio file
             // reference: i2s_adc_dac example
-            // play the music
-            init_music();
-
+            // play the music -- this is a blocking function
+            // init_music();
 
         }
 

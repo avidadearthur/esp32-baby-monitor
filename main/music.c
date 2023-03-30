@@ -4,9 +4,7 @@
 static const char* TAG = "music_task";
 
 // reference: i2s_adc_dac example
-
-// get the task handel of the i2s_adc_capture_task
-extern TaskHandle_t i2s_adc_capture_task;
+extern TaskHandle_t adcTaskHandle;
 
 /**
  * @brief Reset i2s clock and mode
@@ -58,14 +56,16 @@ void music_task(void*arg)
 {
     int i2s_read_len = EXAMPLE_I2S_READ_LEN;
     size_t bytes_written;
-    
-    // notify the i2s_adc_capture_task to stop capture
-    vTaskSuspend(i2s_adc_capture_task);
+
+    // confirm that adcTaskHandle is not NULL
+    assert(adcTaskHandle != NULL);
+    // suspend adc task to disable ADC
+    vTaskSuspend(adcTaskHandle);
+    // disable ADC
+    i2s_adc_disable(EXAMPLE_I2S_NUM);
 
     // allocate buffer for i2s read data
     uint8_t* i2s_write_buff = (uint8_t*) calloc(i2s_read_len, sizeof(char));
-
-    i2s_adc_disable(EXAMPLE_I2S_NUM);
 
     //1. Play an example audio file(file format: 8bit/16khz/single channel)
     ESP_LOGI(TAG, "Playing file example: \n");
@@ -84,8 +84,8 @@ void music_task(void*arg)
     free(i2s_write_buff);
     // enable ADC
     i2s_adc_enable(EXAMPLE_I2S_NUM);
-    // notify the i2s_adc_capture_task to start capture
-    vTaskResume(i2s_adc_capture_task);
+    // resume adc task
+    vTaskResume(adcTaskHandle);
     
     vTaskDelete(NULL);
 }

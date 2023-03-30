@@ -1,18 +1,6 @@
 #ifndef MUSIC_H
 #define MUSIC_H
 
-#include <stdio.h>
-#include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "spi_flash_mmap.h"
-#include "esp_err.h"
-#include "esp_log.h"
-#include "esp_partition.h"
-#include "driver/i2s.h"
-#include "esp_rom_sys.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
 #include "config.h"
 
 void example_reset_play_mode(void);

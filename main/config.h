@@ -14,7 +14,6 @@
 #include "esp_now.h"
 #include "esp_crc.h"
 #include "esp_vfs_fat.h"
-#include "esp_adc_cal.h"
 #include "esp_partition.h"
 #include "esp_rom_sys.h"
 #include "esp_system.h"

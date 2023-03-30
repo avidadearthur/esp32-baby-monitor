@@ -16,8 +16,8 @@ StreamBufferHandle_t record_stream_buf;
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
 
-TaskHandle_t i2s_adc_capture_task = NULL;
-
+// reference: https://www.codeinsideout.com/blog/freertos/notification/#two-looping-tasks
+TaskHandle_t adcTaskHandle;
 // i2s adc capture task
 void i2s_adc_capture_task(void* task_param)
 {
@@ -30,16 +30,10 @@ void i2s_adc_capture_task(void* task_param)
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
 
-    // get the handle of the current task
-    i2s_adc_capture_task = xTaskGetCurrentTaskHandle();
-    // declare a variable to store the notification value
-    uint32_t ulNotificationValue;
 
     i2s_adc_enable(EXAMPLE_I2S_NUM);
 
     while(true){
-        // wait for the init_music task to complete and send a notification
-        ulNotificationValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         // read from i2s bus and use errno to check if i2s_read is successful
         if (i2s_read(EXAMPLE_I2S_NUM, (char*)mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
             ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
@@ -53,9 +47,6 @@ void i2s_adc_capture_task(void* task_param)
             exit(errno);
         }
 
-        // set the task to be finished
-        xTaskNotifyGive(i2s_adc_capture_task);
-        
         /**
          * xstreambuffersend to fft task
         */
@@ -164,7 +155,7 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
     record_stream_buf = record_audio_buf;
 
     /* thread for adc and filling the buf for the transmitter */
-    xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, 4, NULL); 
+    xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, 4, &adcTaskHandle); 
 
     return ESP_OK;
 }

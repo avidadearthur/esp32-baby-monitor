@@ -78,11 +78,10 @@ void i2s_adc_dac_config(void)
      i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
      //init ADC pad
      i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
-    //init DAC pad
+     //init DAC pad
      i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN);
      // set i2s clock source for i2s mic
      i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE*1.25, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_FORMAT); 
-     // try setting channel to EXAMPLE_I2S_CHANNEL_NUM or i2s_channel_t I2S_CHANNEL_MONO (1)
      // the audio quality was fixed by setting the i2s clock source to ((adc_bits+8)/16) times the sample rate, which is 1.25 times the sample rate
      // reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
      // reference: https://docs.espressif.com/projects/esp-idf/en/v4.2/esp32/api-reference/peripherals/i2s.html#_CPPv49i2s_write10i2s_port_tPKv6size_tP6size_t10TickType_t
@@ -92,8 +91,8 @@ void i2s_adc_dac_config(void)
      //init DAC pad (GPIO25 & GPIO26) & mode
      i2s_set_pin(i2s_num, NULL);
      // set i2s clock source for i2s spk
-     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, I2S_CHANNEL_FMT_RIGHT_LEFT);
-     // try setting channel to i2s_channel_t I2S_CHANNEL_MONO (1)
+     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_FORMAT);
+     // try setting channel to i2s_channel_t I2S_CHANNEL_MONO (1), orignally I2S_CHANNEL_FMT_RIGHT_LEFT
      // set i2s sample rate for respective dac channel of i2s spk (clock source is set automatically by the function)
      i2s_set_sample_rates(i2s_num, EXAMPLE_I2S_SAMPLE_RATE/2); 
     #endif
