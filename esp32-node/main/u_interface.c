@@ -15,6 +15,8 @@ typedef enum
     DISPLAY_EXTREME_TEMP,
     DISPLAY_MAX_TEMP_THRESHOLD,
     SET_MAX_TEMP_THRESHOLD,
+    INCREASE_MAX_TEMP_THRESHOLD,
+    DECREASE_MAX_TEMP_THRESHOLD,
     DISPLAY_MIN_TEMP_THRESHOLD,
     SET_MIN_TEMP_THRESHOLD,
     DISPLAY_MUSIC_STATE,
@@ -37,7 +39,7 @@ float temp_threshold_min = 22.0;
 float temp_threshold_max = 24.0;
 
 // for the changing state of the threshold
-float new_temp_threshold_max;
+float new_temp_threshold_max = 0.0;
 
 // define current max and min temp as global variable
 float current_max_temp = 0.0;
@@ -71,8 +73,11 @@ void IRAM_ATTR up_button_isr_handler(void *arg)
         }
         else if (current_state == SET_MAX_TEMP_THRESHOLD)
         {
-            new_temp_threshold_max = new_temp_threshold_max + 1;
-            current_state = SET_MAX_TEMP_THRESHOLD;
+            current_state = INCREASE_MAX_TEMP_THRESHOLD;
+        }
+        else if (current_state == DECREASE_MAX_TEMP_THRESHOLD)
+        {
+            current_state = INCREASE_MAX_TEMP_THRESHOLD;
         }
 
         xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
@@ -107,8 +112,11 @@ void IRAM_ATTR down_button_isr_handler(void *arg)
         }
         else if (current_state == SET_MAX_TEMP_THRESHOLD)
         {
-            new_temp_threshold_max = new_temp_threshold_max - 1;
-            current_state = SET_MAX_TEMP_THRESHOLD;
+            current_state = DECREASE_MAX_TEMP_THRESHOLD;
+        }
+        else if (current_state == INCREASE_MAX_TEMP_THRESHOLD)
+        {
+            current_state = DECREASE_MAX_TEMP_THRESHOLD;
         }
 
         xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
@@ -127,10 +135,11 @@ void IRAM_ATTR set_button_isr_handler(void *arg)
     {
         if (current_state == DISPLAY_MAX_TEMP_THRESHOLD) // enter temp setting mode
         {
+            // log the value of new_temp_threshold_max
             new_temp_threshold_max = temp_threshold_max;
             current_state = SET_MAX_TEMP_THRESHOLD;
         }
-        else if (current_state == SET_MAX_TEMP_THRESHOLD) // confirm temp setting
+        else if (current_state == INCREASE_MAX_TEMP_THRESHOLD || current_state == DECREASE_MAX_TEMP_THRESHOLD) // confirm temp setting
         {
             temp_threshold_max = new_temp_threshold_max;
             current_state = DISPLAY_MAX_TEMP_THRESHOLD;
@@ -243,6 +252,28 @@ void init_u_interface(void)
                 ESP_LOGI(TAG, "Current state: SET_MAX_TEMP_THRESHOLD");
 
                 ESP_LOGI(TAG, "Updated max temp threshold: %.2f", temp_threshold_max);
+                break;
+
+            case INCREASE_MAX_TEMP_THRESHOLD:
+                // Code for INCREASE_MAX_TEMP_THRESHOLD
+                // log the current state
+                ESP_LOGI(TAG, "Current state: INCREASE_MAX_TEMP_THRESHOLD");
+
+                // increase the value of new_temp_threshold_max
+                new_temp_threshold_max += 1;
+                // log the values of the temp thresholds
+                ESP_LOGI(TAG, "new_temp_threshold_min: %.2f", new_temp_threshold_max);
+                break;
+
+            case DECREASE_MAX_TEMP_THRESHOLD:
+                // Code for DECREASE_MAX_TEMP_THRESHOLD
+                // log the current state
+                ESP_LOGI(TAG, "Current state: DECREASE_MAX_TEMP_THRESHOLD");
+
+                // decrease the value of new_temp_threshold_max
+                new_temp_threshold_max -= 1;
+                // log the values of the temp thresholds
+                ESP_LOGI(TAG, "new_temp_threshold_min: %.2f", new_temp_threshold_max);
                 break;
 
             case DISPLAY_MIN_TEMP_THRESHOLD:

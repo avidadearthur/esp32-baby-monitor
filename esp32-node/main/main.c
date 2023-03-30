@@ -1,6 +1,6 @@
 #include "config.h"
 #include "ui.h"
-// #include "u_interface.h"
+#include "u_interface.h"
 #include "nrf24.h"
 #include "wifi_station.h"
 
@@ -46,8 +46,8 @@ void app_main(void)
 	init_nrf24(nrf_data_xStream);
 
 	// init_ui(nrf_data_xStream);
-	// init_u_interface();
-	init_simple_transmission(nrf_data_xStream);
+	init_u_interface();
+	// init_simple_transmission(nrf_data_xStream);
 
 #endif
 
