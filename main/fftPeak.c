@@ -1,5 +1,6 @@
 #include "fftpeak.h"
 #include "music.h"
+#include "zcr.h"
 
 
 #define REP 100
@@ -183,6 +184,9 @@ void fft_task(void* task_param){
 
         // if peak is in range of 350-550 Hz, then it is a note
         if ((freq1 > 350.0 && freq1 < 500.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
+            // // db confirm if the baby is crying by calculating zcr
+            // bool is_cry = zcr(fft_analysis->input, N);
+            
             ESP_LOGI(TAG, "cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
             // call the init_music functoin to play from existing audio file
             // reference: i2s_adc_dac example
