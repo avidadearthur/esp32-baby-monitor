@@ -40,6 +40,7 @@ void app_main(void) {
         deinit_config();
         exit(errno);
     }
+    xSemaphore = xSemaphoreCreateBinary();
     #endif
     #if(!RECV) & (FFT_TASK) & (RECORD_TASK)
     record_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN, 1);

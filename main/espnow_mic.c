@@ -16,6 +16,8 @@ StreamBufferHandle_t record_stream_buf;
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
 
+TaskHandle_t i2s_adc_capture_task = NULL;
+
 // i2s adc capture task
 void i2s_adc_capture_task(void* task_param)
 {
@@ -27,9 +29,17 @@ void i2s_adc_capture_task(void* task_param)
     // enable i2s adc
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
+
+    // get the handle of the current task
+    i2s_adc_capture_task = xTaskGetCurrentTaskHandle();
+    // declare a variable to store the notification value
+    uint32_t ulNotificationValue;
+
     i2s_adc_enable(EXAMPLE_I2S_NUM);
 
     while(true){
+        // wait for the init_music task to complete and send a notification
+        ulNotificationValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         // read from i2s bus and use errno to check if i2s_read is successful
         if (i2s_read(EXAMPLE_I2S_NUM, (char*)mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
             ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
@@ -43,6 +53,9 @@ void i2s_adc_capture_task(void* task_param)
             exit(errno);
         }
 
+        // set the task to be finished
+        xTaskNotifyGive(i2s_adc_capture_task);
+        
         /**
          * xstreambuffersend to fft task
         */
@@ -57,7 +70,7 @@ void i2s_adc_capture_task(void* task_param)
 
         // scale the data to 8 bit
         i2s_adc_data_scale(mic_read_buf, mic_read_buf, READ_BUF_SIZE_BYTES);
- 
+
         /**
          * xstreambuffersend is a blocking function that sends data to the stream buffer,
          * esp_now_send needs to send 128 packets of 250 bytes each, so the stream buffer needs to be able to hold at least 2-3 times of 128 * 250 bytes = BYTE_RATE bytes
@@ -77,8 +90,6 @@ void i2s_adc_capture_task(void* task_param)
             ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", record_byte, READ_BUF_SIZE_BYTES);
         }
         #endif
-
-
     }
     free(mic_read_buf);
     vTaskDelete(NULL);
@@ -149,9 +160,9 @@ void i2s_dac_playback_task(void* task_param) {
 /* call the init_auidio function for starting adc and filling the buf -second */
 esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHandle_t fft_audio_buf, StreamBufferHandle_t record_audio_buf){ 
     printf("initializing i2s mic\n");
-
     fft_stream_buf = fft_audio_buf;
     record_stream_buf = record_audio_buf;
+
     /* thread for adc and filling the buf for the transmitter */
     xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, 4, NULL); 
 

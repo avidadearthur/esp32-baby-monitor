@@ -21,6 +21,12 @@
     "bitset": "c",
     "chrono": "c",
     "algorithm": "c",
-    "wifi.h": "c"
+    "wifi.h": "c",
+    "array": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "regex": "c",
+    "utility": "c",
+    "audio_example_file.h": "c"
   }
 }

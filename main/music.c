@@ -1,8 +1,12 @@
-
+#include "music.h"
+#include "audio_example_file.h"
 
 static const char* TAG = "music_task";
 
 // reference: i2s_adc_dac example
+
+// get the task handel of the i2s_adc_capture_task
+extern TaskHandle_t i2s_adc_capture_task;
 
 /**
  * @brief Reset i2s clock and mode
@@ -53,34 +57,36 @@ int example_i2s_dac_data_scale(uint8_t* d_buff, uint8_t* s_buff, uint32_t len)
 void music_task(void*arg)
 {
     int i2s_read_len = EXAMPLE_I2S_READ_LEN;
-    int flash_wr_size = 0;
     size_t bytes_written;
+    
+    // notify the i2s_adc_capture_task to stop capture
+    vTaskSuspend(i2s_adc_capture_task);
 
+    // allocate buffer for i2s read data
     uint8_t* i2s_write_buff = (uint8_t*) calloc(i2s_read_len, sizeof(char));
 
     i2s_adc_disable(EXAMPLE_I2S_NUM);
 
-    while (true) {
-        //1. Play an example audio file(file format: 8bit/16khz/single channel)
-        printf("Playing file example: \n");
-        int offset = 0;
-        int tot_size = sizeof(audio_table);
-        example_set_file_play_mode();
-        while (offset < tot_size) {
-            int play_len = ((tot_size - offset) > (4 * 1024)) ? (4 * 1024) : (tot_size - offset);
-            int i2s_wr_len = example_i2s_dac_data_scale(i2s_write_buff, (uint8_t*)(audio_table + offset), play_len);
-            i2s_write(EXAMPLE_I2S_NUM, i2s_write_buff, i2s_wr_len, &bytes_written, portMAX_DELAY);
-            offset += play_len;
-        }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-        example_reset_play_mode();
-        // break loop
-        break;
+    //1. Play an example audio file(file format: 8bit/16khz/single channel)
+    ESP_LOGI(TAG, "Playing file example: \n");
+    int offset = 0;
+    int tot_size = sizeof(audio_table);
+    example_set_file_play_mode();
+    while (offset < tot_size) {
+        int play_len = ((tot_size - offset) > (4 * 1024)) ? (4 * 1024) : (tot_size - offset);
+        int i2s_wr_len = example_i2s_dac_data_scale(i2s_write_buff, (uint8_t*)(audio_table + offset), play_len);
+        i2s_write(EXAMPLE_I2S_NUM, i2s_write_buff, i2s_wr_len, &bytes_written, portMAX_DELAY);
+        offset += play_len;
     }
-    // enable ADC
-    i2s_adc_enable(EXAMPLE_I2S_NUM);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    example_reset_play_mode();
     // free buffer
     free(i2s_write_buff);
+    // enable ADC
+    i2s_adc_enable(EXAMPLE_I2S_NUM);
+    // notify the i2s_adc_capture_task to start capture
+    vTaskResume(i2s_adc_capture_task);
+    
     vTaskDelete(NULL);
 }
 
