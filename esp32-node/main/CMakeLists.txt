@@ -1,6 +1,7 @@
 set(component_srcs "main.c")
 
 idf_component_register(SRCS "${component_srcs}"
+                            "u_interface.c"
                             "config.c"  
                             "nrf24.c"
                             "wifi_station.c"  

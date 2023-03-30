@@ -12,7 +12,6 @@ typedef enum
     DISPLAY_TEMP_STATE,
     DISPLAY_MUSIC_STATE,
     SET_MUSIC_STATE,
-    FLIP_ALARM
 } fsm_state_t;
 
 // Initialize the FSM state to HOME_STATE
