@@ -22,7 +22,7 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
    */
   int k,m;
 
-  fft_config_t *config = (fft_config_t *)malloc(sizeof(fft_config_t));
+  fft_config_t *config = (fft_config_t *)calloc(1,sizeof(fft_config_t));
   assert(config != NULL);
 
   // Check if the size is a power of two
@@ -36,7 +36,7 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
   config->size = size;
 
   // Allocate and precompute twiddle factors, check with errorno
-  config->twiddle_factors = (float *)malloc(2 * config->size * sizeof(float));
+  config->twiddle_factors = (float *)calloc(2 * config->size, sizeof(float));
   assert(config->twiddle_factors != NULL);
 
   // twiddle factors: Wn = exp(j*2*pi*k/n) = cos(2*pi*k/n) + j*sin(2*pi*k/n)
@@ -54,11 +54,12 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
     config->input = input;
   else 
   {
-    if (config->type == FFT_REAL)
-      config->input = (float *)malloc(config->size * sizeof(float));
-    else if (config->type == FFT_COMPLEX)
-      config->input = (float *)malloc(2 * config->size * sizeof(float));
-
+    if (config->type == FFT_REAL){
+      config->input = (float *)calloc(config->size, sizeof(float));
+    }
+    else if (config->type == FFT_COMPLEX){
+      config->input = (float *)calloc(2 * config->size, sizeof(float));
+    }
     config->flags |= FFT_OWN_INPUT_MEM;
     assert(config->input != NULL);
   }
@@ -71,10 +72,12 @@ fft_config_t *fft_init(int size, fft_type_t type, fft_direction_t direction, flo
     config->output = output;
   else
   {
-    if (config->type == FFT_REAL)
-      config->output = (float *)malloc(config->size * sizeof(float));
-    else if (config->type == FFT_COMPLEX)
-      config->output = (float *)malloc(2 * config->size * sizeof(float));
+    if (config->type == FFT_REAL){
+      config->output = (float *)calloc(config->size, sizeof(float));
+    }
+    else if (config->type == FFT_COMPLEX){
+      config->output = (float *)calloc(2 * config->size, sizeof(float));
+    }
 
     config->flags |= FFT_OWN_OUTPUT_MEM;
   }

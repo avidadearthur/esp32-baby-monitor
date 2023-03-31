@@ -50,6 +50,7 @@ void fft_task(void* task_param){
     }
     // Generate hann window
     dsps_wind_hann_f32(wind, total_samples);
+
 #endif
 
 #if(!FFT_ESP_DSP)
@@ -57,7 +58,7 @@ void fft_task(void* task_param){
     float freqs[((fft_analysis->size)/2)+1];
     for (int i = 0; i <= ((fft_analysis->size)/2); i++) {
         if (i == 1){
-            freqs[i] = (N/2)*FREQ_STEP;
+            freqs[i] = ((fft_analysis->size)/2)*FREQ_STEP;
         }
         else{
             freqs[i] = i*FREQ_STEP;
@@ -71,6 +72,7 @@ void fft_task(void* task_param){
         ESP_LOGE(TAG, "freqs is NULL");
         exit(1);
     }
+
     for (int i = 0; i <= ((total_samples/2)); i++) {
         freqs[i] = i*FREQ_STEP;
     }
@@ -107,7 +109,6 @@ void fft_task(void* task_param){
 #endif
     // when there is data available in the stream buffer, read it and execute fft
     while (true) {
-        
         // fill signal with ADC output (use xStreamBufferReceive() to get data from ADC DMA buffer) with size sample rate
         size_t byte_received = xStreamBufferReceive(fft_stream_buf, fft_input, N, wait_ticks);
         assert(byte_received == N);
@@ -131,6 +132,7 @@ void fft_task(void* task_param){
                 power[i] = (fft_analysis->output)[2*i]*(fft_analysis->output)[2*i] + (fft_analysis->output)[(2*i)+1]*(fft_analysis->output)[(2*i)+1];   /* amplitude sqr */
             }
         }
+
     #else
         // first memset all values in x1 to 0 for zero padding
         memset(x1, 0, total_samples * sizeof(float));
@@ -147,7 +149,6 @@ void fft_task(void* task_param){
         // Convert one complex vector with length N to one real specturm vector with length M
         dsps_cplx2real_fc32(x1, total_samples>>1);
         unsigned int end_r4 = dsp_get_cpu_cycle_count();
-
         // calculate power spectrum
         for (int i = 0 ; i < total_samples/2 ; i++) {
             x1[i] = 10 * log10f((x1[i * 2 + 0] * x1[i * 2 + 0] + x1[i * 2 + 1] * x1[i * 2 + 1] + 0.0000001));
@@ -182,11 +183,10 @@ void fft_task(void* task_param){
             }
         }
 
+        zcr(fft_analysis->input, N);
+
         // if peak is in range of 350-550 Hz, then it is a note
         if ((freq1 > 350.0 && freq1 < 500.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
-            // // db confirm if the baby is crying by calculating zcr
-            // bool is_cry = zcr(fft_analysis->input, N);
-            
             ESP_LOGI(TAG, "cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
             // call the init_music functoin to play from existing audio file
             // reference: i2s_adc_dac example
