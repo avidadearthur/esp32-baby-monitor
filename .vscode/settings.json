@@ -27,6 +27,7 @@
     "initializer_list": "c",
     "regex": "c",
     "utility": "c",
-    "audio_example_file.h": "c"
+    "audio_example_file.h": "c",
+    "i2s_recv_std_config.h": "c"
   }
 }
