@@ -93,6 +93,6 @@ void music_task(void*arg)
 esp_err_t init_music(void)
 {
     esp_log_level_set("I2S", ESP_LOG_INFO);
-    xTaskCreate(music_task, "music_task", 2048, NULL, 5, NULL);
+    xTaskCreate(music_task, "music_task", 2048, NULL, 4, NULL);
     return ESP_OK;
 }

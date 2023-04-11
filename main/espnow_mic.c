@@ -4,9 +4,6 @@
 #include "espnow_mic.h"
 #include "sd_record.h"
 
-#if (!CONFIG_IDF_TARGET_ESP32)
-#include "i2s_recv_std_config.h"
-#endif
 
 static const char* TAG = "espnow_mic";
 StreamBufferHandle_t spk_stream_buf;
@@ -164,11 +161,8 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
 esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){ 
     printf("initializing i2s spk\n");
     // /* thread for filling the buf for the reciever and dac */
-#if CONFIG_IDF_TARGET_ESP32
     xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
-#else
-    xTaskCreate(i2s_std_playback_task, "i2s_std_playback_task", 4096,(void*) network_stream_buf, 4, NULL);
-#endif
+
     return ESP_OK;
 }
 

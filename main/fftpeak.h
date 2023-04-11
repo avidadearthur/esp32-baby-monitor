@@ -12,8 +12,6 @@
 #include "soc/uart_struct.h"
 #include <math.h>
 
-#include "esp_dsp.h"
-
 
 
 void init_fft(StreamBufferHandle_t fft_stream_buf);
