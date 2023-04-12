@@ -43,7 +43,6 @@ void init_non_volatile_storage(void) {
     }
 }
 
-#if CONFIG_IDF_TARGET_ESP32
 /**
  * @brief I2S config for using internal ADC and DAC
  * one time set up
@@ -69,17 +68,16 @@ void i2s_adc_dac_config(void)
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT, // only right channel for adc
         #endif
         .intr_alloc_flags = 0, // default interrupt priority
-        .dma_buf_count = 4, // number of dma descriptors, or count for adc
-        .dma_buf_len = 512, // number of dma frames, or length for adc
+        .dma_desc_num = 4, // number of dma descriptors, or count for adc
+        .dma_frame_num = 512, // number of dma frames, or length for adc
         .use_apll = false, // use apll for adc. if false, peripheral clock is derived and used for better wifi transmission performance (pending test)
-        // .tx_desc_auto_clear = false, // i2s auto clear tx descriptor on underflow
      };
      //install and start i2s driver
      i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
      //init ADC pad
      i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
      // set i2s clock source for i2s mic
-     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE*1.25, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_FORMAT); 
+     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE*1.25, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_CHANNEL_NUM); 
      // try setting channel to EXAMPLE_I2S_CHANNEL_NUM or i2s_channel_t I2S_CHANNEL_MONO (1)
      // the audio quality was fixed by setting the i2s clock source to ((adc_bits+8)/16) times the sample rate, which is 1.25 times the sample rate
      // reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
@@ -90,20 +88,20 @@ void i2s_adc_dac_config(void)
      //init DAC pad (GPIO25 & GPIO26) & mode
      i2s_set_pin(i2s_num, NULL);
      // set i2s clock source for i2s spk
-     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, I2S_CHANNEL_FMT_RIGHT_LEFT);
-     // try setting channel to i2s_channel_t I2S_CHANNEL_MONO (1)
+     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS,I2S_CHANNEL_FMT_RIGHT_LEFT);
+     // enable i2s speaker
+     //  i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN);
      // set i2s sample rate for respective dac channel of i2s spk (clock source is set automatically by the function)
      i2s_set_sample_rates(i2s_num, EXAMPLE_I2S_SAMPLE_RATE/2); 
     #endif
 }
-#endif
 
 /* initialized espnow */
 esp_err_t espnow_init(void){
 
     /* Initialize ESPNOW and register sending and receiving callback function. */
     ESP_ERROR_CHECK( esp_now_init() );
-#if (RECV)
+#if(RECV)
     /**
      * registration of receiving callback function
      * */ 
@@ -139,18 +137,14 @@ void init_config(void){
     init_non_volatile_storage();
     espnow_wifi_init();
     espnow_init();
-#if CONFIG_IDF_TARGET_ESP32
+
     i2s_adc_dac_config();
     // get the clock rate for adc and dac
     float freq = i2s_get_clk(EXAMPLE_I2S_NUM);
     printf("i2s clock rate: %f, sample rate: %d, bits per sample: %d \n", freq, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS);
-#endif
     /**
      * for configuring i2s-speaker only
     */
-#if (!CONFIG_IDF_TARGET_ESP32 ) & RECV
-   i2s_recv_std_config(void);
-#endif
     esp_log_level_set("I2S", ESP_LOG_INFO);
 }
 
@@ -158,20 +152,17 @@ void init_config(void){
 void deinit_config(void){
 
     esp_now_deinit();
-#if CONFIG_IDF_TARGET_ESP32 & (!RECV)
+#if (!RECV)
     i2s_adc_disable(EXAMPLE_I2S_NUM);
 #endif
-#if (CONFIG_IDF_TARGET_ESP32) & RECV
+#if RECV
     i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
-#endif
-#if (!CONFIG_IDF_TARGET_ESP32) & RECV
-    i2s_channel_disable(tx_chan);
 #endif
     i2s_driver_uninstall(EXAMPLE_I2S_NUM);
     esp_wifi_stop();
     esp_wifi_deinit();
 
-#if CONFIG_IDF_TARGET_ESP32 & (!RECV)
+#if (!RECV)
     free(mic_read_buf);
 #endif
     free(spk_write_buf);

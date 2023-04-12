@@ -73,7 +73,7 @@ void app_main(void) {
 #if (!RECV)
     // initialize the transmitter and audio
     init_transmit(mic_stream_buf);
-    init_audio_trans(mic_stream_buf, fft_stream_buf,record_stream_buf);
+    init_audio_trans(mic_stream_buf,fft_stream_buf,record_stream_buf);
     #if(!RECV) & (FFT_TASK)
         init_fft(fft_stream_buf);
     #endif

@@ -9,7 +9,7 @@
 #define N_SAMPLES (EXAMPLE_I2S_READ_LEN/16) // Amount of real input samples. FFT size max in DSP is 4096. EXAMPLE_I2S_READ_LEN
 #define FREQ_STEP (EXAMPLE_I2S_SAMPLE_RATE / N_SAMPLES)
 
-#define FFT_DEBUG 1
+#define FFT_DEBUG 0
 #define FFT_ESP_DSP 0
 
 static const char* TAG = "FFTPEAK";
@@ -20,9 +20,9 @@ void fft_task(void* task_param){
     StreamBufferHandle_t fft_stream_buf = (StreamBufferHandle_t) task_param;
 
     int N = N_SAMPLES; // FFT size max in DSP is 4096. EXAMPLE_I2S_READ_LEN
-    int power_of_two = dsp_power_of_two(N);
 
 #if (FFT_ESP_DSP)
+    int power_of_two = dsp_power_of_two(N);
     // total sample is next power of two of N
     int total_samples = pow(2, power_of_two+1);
     // Input test array
@@ -262,7 +262,7 @@ void init_fft(StreamBufferHandle_t fft_audio_buf){
     // create a delay
     xTaskNotifyWait(0, 0, NULL, wait_ticks);
     // create a task to run the fft
-    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, 5, NULL);
+    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, 4, NULL);
 }
 
 

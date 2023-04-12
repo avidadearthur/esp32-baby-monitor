@@ -38,9 +38,6 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#if !(CONFIG_IDF_TARGET_ESP32)
-#include "i2s_recv_std_config.h"
-#endif
 
 #define RECV        0
 #define FFT_TASK    1
@@ -72,11 +69,11 @@
 //i2s data bits
 #define EXAMPLE_I2S_SAMPLE_BITS   (16)
 //enable display buffer for debug
-#define EXAMPLE_I2S_BUF_DEBUG     (1)
+#define EXAMPLE_I2S_BUF_DEBUG     (0)
 //I2S read buffer length
 #define EXAMPLE_I2S_READ_LEN      (16 * 1024)
 
-#if CONFIG_IDF_TARGET_ESP32
+
 //I2S data format
 #define EXAMPLE_I2S_FORMAT        (I2S_CHANNEL_FMT_ONLY_RIGHT)
 //I2S channel number
@@ -87,7 +84,7 @@
 #define I2S_ADC_CHANNEL           ADC1_CHANNEL_0
 // I2S byte rate is 16bit * 1ch * 16000Hz / 8bit = 32000
 #define BYTE_RATE                 (EXAMPLE_I2S_CHANNEL_NUM * EXAMPLE_I2S_SAMPLE_RATE * EXAMPLE_I2S_SAMPLE_BITS / 8)
-#endif
+
 
 // SPI DMA channel
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO

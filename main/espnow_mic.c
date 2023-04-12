@@ -4,10 +4,6 @@
 #include "espnow_mic.h"
 #include "sd_record.h"
 
-#if (!CONFIG_IDF_TARGET_ESP32)
-#include "i2s_recv_std_config.h"
-#endif
-
 static const char* TAG = "espnow_mic";
 StreamBufferHandle_t spk_stream_buf;
 StreamBufferHandle_t fft_stream_buf;
@@ -28,9 +24,11 @@ void i2s_adc_capture_task(void* task_param)
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
     i2s_adc_enable(EXAMPLE_I2S_NUM);
+    ESP_LOGI(TAG, "i2s_adc_enable \n");
 
     while(true){
         // read from i2s bus and use errno to check if i2s_read is successful
+        // i2s_read each time READ_BUF_SIZE_BYTES
         if (i2s_read(EXAMPLE_I2S_NUM, (char*)mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
             ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
             deinit_config();
@@ -80,6 +78,9 @@ void i2s_adc_capture_task(void* task_param)
 
 
     }
+    // disable adc
+    i2s_adc_disable(EXAMPLE_I2S_NUM);
+    ESP_LOGI(TAG, "i2s_adc_disable \n");
     free(mic_read_buf);
     vTaskDelete(NULL);
     
@@ -111,12 +112,13 @@ void i2s_dac_playback_task(void* task_param) {
     int intialized = 1;
 
     size_t bytes_written = 0;
-    spk_write_buf = (uint8_t*) calloc(EXAMPLE_I2S_SAMPLE_RATE/2,sizeof(char));
+    spk_write_buf = (uint8_t*) calloc(BYTE_RATE,sizeof(char));
     assert(spk_write_buf != NULL);
 
     while (true) {
         // read from the stream buffer, use errno to check if xstreambufferreceive is successful
-        size_t num_bytes = xStreamBufferReceive(spk_stream_buf, (void*) spk_write_buf, EXAMPLE_I2S_SAMPLE_RATE/2, portMAX_DELAY);
+        // dac strspk_stream_buf receives data from espnow task and has a capacity of BYTE_RATE bytes
+        size_t num_bytes = xStreamBufferReceive(spk_stream_buf, (void*) spk_write_buf,BYTE_RATE, portMAX_DELAY);
         if (num_bytes > 0) {
             // send data to i2s dac
             esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, spk_write_buf, num_bytes, &bytes_written, portMAX_DELAY);
@@ -162,11 +164,9 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
 esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){ 
     printf("initializing i2s spk\n");
     // /* thread for filling the buf for the reciever and dac */
-#if CONFIG_IDF_TARGET_ESP32
+
     xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
-#else
-    xTaskCreate(i2s_std_playback_task, "i2s_std_playback_task", 4096,(void*) network_stream_buf, 4, NULL);
-#endif
+
     return ESP_OK;
 }
 

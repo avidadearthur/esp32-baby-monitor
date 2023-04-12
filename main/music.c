@@ -1,4 +1,4 @@
-
+#include "music.h"
 
 static const char* TAG = "music_task";
 
@@ -53,12 +53,9 @@ int example_i2s_dac_data_scale(uint8_t* d_buff, uint8_t* s_buff, uint32_t len)
 void music_task(void*arg)
 {
     int i2s_read_len = EXAMPLE_I2S_READ_LEN;
-    int flash_wr_size = 0;
     size_t bytes_written;
 
     uint8_t* i2s_write_buff = (uint8_t*) calloc(i2s_read_len, sizeof(char));
-
-    i2s_adc_disable(EXAMPLE_I2S_NUM);
 
     while (true) {
         //1. Play an example audio file(file format: 8bit/16khz/single channel)
@@ -79,8 +76,6 @@ void music_task(void*arg)
     }
     // free buffer
     free(i2s_write_buff);
-    // enable ADC
-    i2s_adc_enable(EXAMPLE_I2S_NUM);
     // delete task
     vTaskDelete(NULL);
 }
@@ -88,6 +83,6 @@ void music_task(void*arg)
 esp_err_t init_music(void)
 {
     esp_log_level_set("I2S", ESP_LOG_INFO);
-    xTaskCreate(music_task, "music_task", 2048, NULL, 5, NULL);
+    xTaskCreate(music_task, "music_task", 2048, NULL, 4, NULL);
     return ESP_OK;
 }

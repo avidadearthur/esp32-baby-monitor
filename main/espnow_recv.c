@@ -15,8 +15,8 @@ StreamBufferHandle_t network_stream_buf;
 /* defining reciever task */
 void espnow_recv_task(const uint8_t* mac_addr, const uint8_t* data, int len) {
     // params of espnow_recv_task is recieved from esp_now_send(mac_addr, buffer, len)
-    // wait until the bytes to be sent is sample rate / 2 for each dac channel. to have an interger value of 250 bytes per packet size, 250 *80 = 20000 bytes, approx sample rate / 2
-    if(xStreamBufferSend(network_stream_buf, data, len*80, portMAX_DELAY) != len*80){
+    // clear audio quality version: len stays 250 bytes.
+    if(xStreamBufferSend(network_stream_buf, data, len , portMAX_DELAY) != len ){
         ESP_LOGE(TAG, "Failed to send data to network stream buffer: %d", errno);
         exit(errno);
     }
