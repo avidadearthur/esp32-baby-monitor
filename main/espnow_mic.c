@@ -110,12 +110,12 @@ void i2s_dac_playback_task(void* task_param) {
     int intialized = 1;
 
     size_t bytes_written = 0;
-    spk_write_buf = (uint8_t*) calloc(EXAMPLE_I2S_SAMPLE_RATE/2,sizeof(char));
+    spk_write_buf = (uint8_t*) calloc(BYTE_RATE,sizeof(char));
     assert(spk_write_buf != NULL);
 
     while (true) {
         // read from the stream buffer, use errno to check if xstreambufferreceive is successful
-        size_t num_bytes = xStreamBufferReceive(spk_stream_buf, (void*) spk_write_buf, EXAMPLE_I2S_SAMPLE_RATE/2, portMAX_DELAY);
+        size_t num_bytes = xStreamBufferReceive(spk_stream_buf, (void*) spk_write_buf, BYTE_RATE, portMAX_DELAY);
         if (num_bytes > 0) {
             // send data to i2s dac
             esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, spk_write_buf, num_bytes, &bytes_written, portMAX_DELAY);
@@ -128,11 +128,6 @@ void i2s_dac_playback_task(void* task_param) {
             // reference: https://docs.espressif.com/projects/esp-idf/en/v4.2/esp32/api-reference/peripherals/i2s.html#_CPPv49i2s_write10i2s_port_tPKv6size_tP6size_t10TickType_t
             // reference: i2s_write(I2S_NUM, samples_data, ((bits+8)/16)*SAMPLE_PER_CYCLE*4, &i2s_bytes_write, 100); 
             // this number is  without adc to dac scaling that is done in the i2s_adc_data_scale function, the i2s_write function needs to be called with the above parameters
-        }
-        else if(num_bytes != EXAMPLE_I2S_SAMPLE_RATE) {
-            printf("Error: partial reading from net stream: %d\n", errno);
-            deinit_config();
-            exit(errno);
         }
         intialized = 0;
         

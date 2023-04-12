@@ -40,7 +40,7 @@
 
 
 #define RECV        0
-#define FFT_TASK    1
+#define FFT_TASK    0
 #define RECORD_TASK 0
 
 /** wifi configuration */
@@ -69,7 +69,7 @@
 //i2s data bits
 #define EXAMPLE_I2S_SAMPLE_BITS   (16)
 //enable display buffer for debug
-#define EXAMPLE_I2S_BUF_DEBUG     (1)
+#define EXAMPLE_I2S_BUF_DEBUG     (0)
 //I2S read buffer length
 #define EXAMPLE_I2S_READ_LEN      (16 * 1024)
 
