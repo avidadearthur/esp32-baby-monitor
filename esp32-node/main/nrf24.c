@@ -49,6 +49,8 @@ void receiver(void *xStream)
     Nrf24_init(&dev);
     uint8_t payload = sizeof(mydata.data);
     uint8_t channel = 28;
+    uint8_t pa_high = 2;
+    Nrf24_SetOutputRF_PWR(&dev, pa_high);
     Nrf24_config(&dev, channel, payload);
 
     // Set the receiver address using 5 characters
@@ -118,6 +120,8 @@ void transmitter(void *pvParameters)
     uint8_t payload = sizeof(mydata.data);
     uint8_t channel = 28;
     Nrf24_config(&dev, channel, payload);
+    uint8_t pa_high = 2;
+    Nrf24_SetOutputRF_PWR(&dev, pa_high);
 
     // Set the receiver address using 5 characters
     /// ABCDE --> 0x41, 0x42, 0x43, 0x44, 0x45
