@@ -1,5 +1,5 @@
 #include "u_interface.h"
-
+#include "config.h"
 #include "driver/gpio.h"
 
 #define SET_BUTTON_GPIO 33
@@ -13,12 +13,17 @@ typedef enum
 {
     DISPLAY_HOME_STATE,
     DISPLAY_EXTREME_TEMP,
+
     DISPLAY_MAX_TEMP_THRESHOLD,
     SET_MAX_TEMP_THRESHOLD,
     INCREASE_MAX_TEMP_THRESHOLD,
     DECREASE_MAX_TEMP_THRESHOLD,
+
     DISPLAY_MIN_TEMP_THRESHOLD,
     SET_MIN_TEMP_THRESHOLD,
+    INCREASE_MIN_TEMP_THRESHOLD,
+    DECREASE_MIN_TEMP_THRESHOLD,
+
     DISPLAY_MUSIC_STATE,
     SET_MUSIC_STATE,
     SET_MUSIC_CONFIRM_STATE
@@ -40,6 +45,7 @@ float temp_threshold_max = 24.0;
 
 // for the changing state of the threshold
 float new_temp_threshold_max = 0.0;
+float new_temp_threshold_min = 0.0;
 
 // define current max and min temp as global variable
 float current_max_temp = 0.0;
@@ -47,6 +53,10 @@ float current_min_temp = 0.0;
 
 // define music state as global variable
 bool music_state = false;
+
+// lcd related
+smbus_info_t *smbus_info = NULL;
+i2c_lcd1602_info_t *lcd_info = NULL;
 
 void IRAM_ATTR up_button_isr_handler(void *arg)
 {
@@ -71,6 +81,7 @@ void IRAM_ATTR up_button_isr_handler(void *arg)
         {
             current_state = DISPLAY_MUSIC_STATE;
         }
+
         else if (current_state == SET_MAX_TEMP_THRESHOLD)
         {
             current_state = INCREASE_MAX_TEMP_THRESHOLD;
@@ -78,6 +89,15 @@ void IRAM_ATTR up_button_isr_handler(void *arg)
         else if (current_state == DECREASE_MAX_TEMP_THRESHOLD)
         {
             current_state = INCREASE_MAX_TEMP_THRESHOLD;
+        }
+
+        else if (current_state == SET_MIN_TEMP_THRESHOLD)
+        {
+            current_state = INCREASE_MIN_TEMP_THRESHOLD;
+        }
+        else if (current_state == DECREASE_MIN_TEMP_THRESHOLD)
+        {
+            current_state = INCREASE_MIN_TEMP_THRESHOLD;
         }
 
         xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
@@ -110,6 +130,7 @@ void IRAM_ATTR down_button_isr_handler(void *arg)
         {
             current_state = DISPLAY_HOME_STATE;
         }
+
         else if (current_state == SET_MAX_TEMP_THRESHOLD)
         {
             current_state = DECREASE_MAX_TEMP_THRESHOLD;
@@ -117,6 +138,15 @@ void IRAM_ATTR down_button_isr_handler(void *arg)
         else if (current_state == INCREASE_MAX_TEMP_THRESHOLD)
         {
             current_state = DECREASE_MAX_TEMP_THRESHOLD;
+        }
+
+        else if (current_state == SET_MIN_TEMP_THRESHOLD)
+        {
+            current_state = DECREASE_MIN_TEMP_THRESHOLD;
+        }
+        else if (current_state == INCREASE_MIN_TEMP_THRESHOLD)
+        {
+            current_state = DECREASE_MIN_TEMP_THRESHOLD;
         }
 
         xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
@@ -144,6 +174,30 @@ void IRAM_ATTR set_button_isr_handler(void *arg)
             temp_threshold_max = new_temp_threshold_max;
             current_state = DISPLAY_MAX_TEMP_THRESHOLD;
         }
+
+        else if (current_state == DISPLAY_MIN_TEMP_THRESHOLD) // enter temp setting mode
+        {
+            // log the value of new_temp_threshold_min
+            new_temp_threshold_min = temp_threshold_min;
+            current_state = SET_MIN_TEMP_THRESHOLD;
+        }
+        else if (current_state == INCREASE_MIN_TEMP_THRESHOLD || current_state == DECREASE_MIN_TEMP_THRESHOLD)
+        {
+            temp_threshold_min = new_temp_threshold_min;
+            current_state = DISPLAY_MIN_TEMP_THRESHOLD;
+        }
+
+        else if (current_state == SET_MAX_TEMP_THRESHOLD)
+        {
+            temp_threshold_max = new_temp_threshold_max;
+            current_state = DISPLAY_MAX_TEMP_THRESHOLD;
+        }
+        else if (current_state == SET_MIN_TEMP_THRESHOLD)
+        {
+            temp_threshold_min = new_temp_threshold_min;
+            current_state = DISPLAY_MIN_TEMP_THRESHOLD;
+        }
+
         else if (current_state == DISPLAY_MUSIC_STATE)
         {
             current_state = SET_MUSIC_STATE;
@@ -192,8 +246,35 @@ void IRAM_ATTR cancel_button_isr_handler(void *arg)
     }
 }
 
+/*lcd display init*/
+void init_display(void)
+{
+    // Set up I2C
+    i2c_master_init();
+    i2c_port_t i2c_num = I2C_MASTER_NUM;
+    uint8_t address = CONFIG_LCD1602_I2C_ADDRESS;
+
+    // Set up the SMBus
+    smbus_info = smbus_malloc();
+    ESP_ERROR_CHECK(smbus_init(smbus_info, i2c_num, address));
+    ESP_ERROR_CHECK(smbus_set_timeout(smbus_info, 1000 / portTICK_PERIOD_MS));
+
+    // Set up the LCD1602 device with backlight off
+    lcd_info = i2c_lcd1602_malloc();
+    ESP_ERROR_CHECK(i2c_lcd1602_init(lcd_info, smbus_info, true,
+                                     LCD_NUM_ROWS, LCD_NUM_COLUMNS, LCD_NUM_VISIBLE_COLUMNS));
+
+    ESP_ERROR_CHECK(i2c_lcd1602_reset(lcd_info));
+
+    // delete the task
+    vTaskDelete(NULL);
+}
+
 void init_u_interface(void)
 {
+    // Create a task to initialize the LCD display
+    xTaskCreate(init_display, "init_display", 2048, NULL, 5, NULL);
+
     // Initialize semaphore
     xSemaphore = xSemaphoreCreateBinary();
 
@@ -210,6 +291,9 @@ void init_u_interface(void)
     gpio_isr_handler_add(SET_BUTTON_GPIO, set_button_isr_handler, NULL);
     gpio_isr_handler_add(CANCEL_BUTTON_GPIO, cancel_button_isr_handler, NULL);
 
+    // force if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) to be true
+    xSemaphoreGive(xSemaphore);
+
     while (1)
     {
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE)
@@ -224,6 +308,9 @@ void init_u_interface(void)
                 // Code for DISPLAY_HOME_STATE
                 // log the current state
                 ESP_LOGI(TAG, "Current state: DISPLAY_HOME_STATE");
+                i2c_lcd1602_clear(lcd_info);
+
+                i2c_lcd1602_write_string(lcd_info, "HOME_STATE");
                 break;
             case DISPLAY_EXTREME_TEMP:
                 // Code for DISPLAY_EXTREME_TEMP
@@ -231,18 +318,53 @@ void init_u_interface(void)
                 ESP_LOGI(TAG, "Current state: DISPLAY_EXTREME_TEMP");
 
                 // log the value of the current maximum temperature
-                ESP_LOGI(TAG, "current_max_temp: %.2f", current_max_temp);
+                // format "current_max_temp: %.2f", current_max_temp to string
+                char max_temp[15];
+                sprintf(max_temp, "MAX T: %.1f", current_max_temp);
+
+                ESP_LOGI(TAG, "%s", max_temp);
+                // print on lcd
+                i2c_lcd1602_clear(lcd_info);
+                i2c_lcd1602_move_cursor(lcd_info, 0, 0);
+                i2c_lcd1602_write_string(lcd_info, max_temp);
+                i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+                i2c_lcd1602_write_char(lcd_info, 'C');
 
                 // log the value of the current minimum temperature
-                ESP_LOGI(TAG, "current_min_temp: %.2f", current_min_temp);
+                // format "current_min_temp: %.2f", current_min_temp to string
+                char min_temp[15];
+                sprintf(min_temp, "MIN T: %.1f", current_min_temp);
+
+                ESP_LOGI(TAG, "%s", min_temp);
+                // print on lcd
+                i2c_lcd1602_move_cursor(lcd_info, 0, 1);
+                i2c_lcd1602_write_string(lcd_info, min_temp);
+                i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+                i2c_lcd1602_write_char(lcd_info, 'C');
+
                 break;
             case DISPLAY_MAX_TEMP_THRESHOLD:
                 // Code for DISPLAY_MAX_TEMP_THRESHOLD
                 // log the current state
                 ESP_LOGI(TAG, "Current state: DISPLAY_MAX_TEMP_THRESHOLD");
 
+                // lcd display
+                i2c_lcd1602_clear(lcd_info);
+                i2c_lcd1602_move_cursor(lcd_info, 0, 0);
+                i2c_lcd1602_write_string(lcd_info, "MAX THRESHOLD");
+
+                i2c_lcd1602_move_cursor(lcd_info, 0, 1);
+                char max_temp_threshold[15];
+                sprintf(max_temp_threshold, "%.1f", temp_threshold_max);
+
                 // log the values of the temp thresholds
-                ESP_LOGI(TAG, "temp_threshold_max: %.2f", temp_threshold_max);
+                ESP_LOGI(TAG, "%s", max_temp_threshold);
+
+                // print on lcd
+                i2c_lcd1602_write_string(lcd_info, max_temp_threshold);
+                i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+                i2c_lcd1602_write_char(lcd_info, 'C');
+
                 break;
 
             /*editing state*/
@@ -250,8 +372,11 @@ void init_u_interface(void)
                 // Code for SET_MAX_TEMP_THRESHOLD
                 // log the current state
                 ESP_LOGI(TAG, "Current state: SET_MAX_TEMP_THRESHOLD");
+                // lcd display
+                i2c_lcd1602_move_cursor(lcd_info, 0, 0);
+                i2c_lcd1602_write_string(lcd_info, "NEW MAX THRESH: ");
 
-                ESP_LOGI(TAG, "Updated max temp threshold: %.2f", temp_threshold_max);
+                ESP_LOGI(TAG, "Updated max temp threshold: %.1f", temp_threshold_max);
                 break;
 
             case INCREASE_MAX_TEMP_THRESHOLD:
@@ -262,7 +387,16 @@ void init_u_interface(void)
                 // increase the value of new_temp_threshold_max
                 new_temp_threshold_max += 1;
                 // log the values of the temp thresholds
-                ESP_LOGI(TAG, "new_temp_threshold_min: %.2f", new_temp_threshold_max);
+                ESP_LOGI(TAG, "new_temp_threshold_min: %.1f", new_temp_threshold_max);
+
+                // lcd display
+                i2c_lcd1602_move_cursor(lcd_info, 0, 1);
+                char new_max_temp_threshold[13];
+                sprintf(new_max_temp_threshold, "%.1f", new_temp_threshold_max);
+                i2c_lcd1602_write_string(lcd_info, new_max_temp_threshold);
+                i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+                i2c_lcd1602_write_char(lcd_info, 'C');
+
                 break;
 
             case DECREASE_MAX_TEMP_THRESHOLD:
@@ -273,7 +407,16 @@ void init_u_interface(void)
                 // decrease the value of new_temp_threshold_max
                 new_temp_threshold_max -= 1;
                 // log the values of the temp thresholds
-                ESP_LOGI(TAG, "new_temp_threshold_min: %.2f", new_temp_threshold_max);
+                ESP_LOGI(TAG, "new_temp_threshold_min: %.1f", new_temp_threshold_max);
+
+                // lcd display
+                i2c_lcd1602_move_cursor(lcd_info, 0, 1);
+                char new_max_temp_threshold2[13];
+                sprintf(new_max_temp_threshold2, "%.1f", new_temp_threshold_max);
+                i2c_lcd1602_write_string(lcd_info, new_max_temp_threshold2);
+                i2c_lcd1602_write_char(lcd_info, I2C_LCD1602_CHARACTER_DEGREE);
+                i2c_lcd1602_write_char(lcd_info, 'C');
+
                 break;
 
             case DISPLAY_MIN_TEMP_THRESHOLD:
@@ -282,7 +425,7 @@ void init_u_interface(void)
                 ESP_LOGI(TAG, "Current state: DISPLAY_MIN_TEMP_THRESHOLD");
 
                 // log the values of the temp thresholds
-                ESP_LOGI(TAG, "temp_threshold_min: %.2f", temp_threshold_min);
+                ESP_LOGI(TAG, "temp_threshold_min: %.1f", temp_threshold_min);
                 break;
 
             /*editing state*/
@@ -291,6 +434,28 @@ void init_u_interface(void)
                 // log the current state
                 ESP_LOGI(TAG, "Current state: SET_MIN_TEMP_THRESHOLD");
 
+                break;
+
+            case INCREASE_MIN_TEMP_THRESHOLD:
+                // Code for INCREASE_MIN_TEMP_THRESHOLD
+                // log the current state
+                ESP_LOGI(TAG, "Current state: INCREASE_MIN_TEMP_THRESHOLD");
+
+                // increase the value of new_temp_threshold_min
+                new_temp_threshold_min += 1;
+                // log the values of the temp thresholds
+                ESP_LOGI(TAG, "new_temp_threshold_min: %.1f", new_temp_threshold_min);
+                break;
+
+            case DECREASE_MIN_TEMP_THRESHOLD:
+                // Code for DECREASE_MIN_TEMP_THRESHOLD
+                // log the current state
+                ESP_LOGI(TAG, "Current state: DECREASE_MIN_TEMP_THRESHOLD");
+
+                // decrease the value of new_temp_threshold_min
+                new_temp_threshold_min -= 1;
+                // log the values of the temp thresholds
+                ESP_LOGI(TAG, "new_temp_threshold_min: %.1f", new_temp_threshold_min);
                 break;
 
             case DISPLAY_MUSIC_STATE:
