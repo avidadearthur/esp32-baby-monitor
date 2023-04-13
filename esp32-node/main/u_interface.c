@@ -294,6 +294,8 @@ void datetime_task(void *pvParameter)
 {
     time_t now = 0;
     struct tm timeinfo = {0};
+    char strftime_buf[64];
+
     // Wait for the time to be synchronized
     while (timeinfo.tm_year < (2020 - 1900))
     {
@@ -301,8 +303,11 @@ void datetime_task(void *pvParameter)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
+        // copy "Sync ntptime..." into strftime_buf
+        strcpy(strftime_buf, "Sync ntptime...");
+        xQueueSend(log_queue, &strftime_buf, portMAX_DELAY);
     }
-    char strftime_buf[64];
+
     while (1)
     {
         // Log the current date and time
@@ -312,7 +317,7 @@ void datetime_task(void *pvParameter)
         xQueueSend(log_queue, &strftime_buf, portMAX_DELAY);
 
         // Update the date/time every second
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         sntp_init();
     }
 }
