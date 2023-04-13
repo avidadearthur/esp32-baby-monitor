@@ -3,6 +3,6 @@
 
 #include "config.h"
 
-bool zcr(float* data, int N);
+bool zcr(float* data, int N, int fs);
 
 #endif

@@ -46,15 +46,15 @@ void espnow_send_task(void* task_param) {
             #endif
         }
         else if (num_bytes == 0) {
-            printf("Error reading from mic stream buffer: %d\n", errno);
+            ESP_LOGI(TAG,"Error reading from mic stream buffer: %d\n", errno);
             ESP_LOGE(TAG, "No data in stream buffer");
         }
         #if EXAMPLE_I2S_BUF_DEBUG
             // check if the timer has reached 10 second
-            if (time(NULL) - start_time >= 60*10) {
+            if (time(NULL) - start_time >= 60*100) {
                 // print the number of packets sent and loss in the last second
-                printf("Packets sent in last 10 second: %d \n", packet_count);
-                printf("Packets lost in last 10 second: %d \n", packet_loss);
+                ESP_LOGI(TAG, "Packets sent in last 10 second: %d \n", packet_count);
+                ESP_LOGI(TAG, "Packets lost in last 10 second: %d \n", packet_loss);
                 // reset the packet count
                 packet_count = 0;
                 packet_loss = 0;
@@ -67,7 +67,7 @@ void espnow_send_task(void* task_param) {
 
 /* sender initialization */
 void init_transmit(StreamBufferHandle_t mic_stream_buf){
-    printf("Init transport!\n");
+    ESP_LOGI(TAG,"Init transport!\n");
     xTaskCreate(espnow_send_task, "espnow_send_task", 4096, (void*) mic_stream_buf, 4, NULL); // create another thread to send data
 }
 
@@ -79,14 +79,14 @@ void init_transmit(StreamBufferHandle_t mic_stream_buf){
 void send_disp_buf(uint8_t* buf, int length)
 {
 #if EXAMPLE_I2S_BUF_DEBUG
-    printf("\n=== SEND ===\n");
+    ESP_LOGI(TAG, "\n=== SEND ===\n");
     for (int i = 0; i < length; i++) {
-        printf("%02x ", buf[i]);
+        ESP_LOGI(TAG, "%02x ", buf[i]);
         if ((i + 1) % 8 == 0) {
-            printf("\n");
+            ESP_LOGI(TAG,"\n");
         }
     }
-    printf("\n=== SEND ===\n");
+    ESP_LOGI(TAG,"\n=== SEND ===\n");
 #endif
 }
 

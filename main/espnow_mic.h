@@ -10,4 +10,7 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
 esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf);
 void mic_disp_buf(uint8_t* buf, int length);
 
+void suspend_adc_capture_task();
+void resume_adc_capture_task();
+
 #endif

@@ -15,6 +15,7 @@
 #define FFT_ESP_DSP 0
 
 static const char* TAG = "FFTPEAK";
+TaskHandle_t fft_task_handle = NULL;
 
 
 void fft_task(void* task_param){
@@ -22,7 +23,7 @@ void fft_task(void* task_param){
     StreamBufferHandle_t fft_stream_buf = (StreamBufferHandle_t) task_param;
 
     int N = N_SAMPLES; // FFT size max in DSP is 4096. EXAMPLE_I2S_READ_LEN
-
+    int fs = EXAMPLE_I2S_SAMPLE_RATE; // sample rate
 
     fft_config_t* fft_analysis;
     // Create fft plan config and let it allocate input and output arrays
@@ -67,12 +68,11 @@ void fft_task(void* task_param){
     // declare a counter to count until processed sample == sample rate
     int count = 0;
 #endif
+    ESP_LOGI(TAG, "FFT task started \n");
     // when there is data available in the stream buffer, read it and execute fft
     while (true) {
         // fill signal with ADC output (use xStreamBufferReceive() to get data from ADC DMA buffer) with size sample rate
         size_t byte_received = xStreamBufferReceive(fft_stream_buf, fft_input, N, wait_ticks);
-        assert(byte_received == N);
-
 
         // scale the 12-bit wide ADC output to 32-bit float
         for (int i = 0; i < N; i++) {
@@ -92,7 +92,6 @@ void fft_task(void* task_param){
                 power[i] = (fft_analysis->output)[2*i]*(fft_analysis->output)[2*i] + (fft_analysis->output)[(2*i)+1]*(fft_analysis->output)[(2*i)+1];   /* amplitude sqr */
             }
         }
-
     
     #if (FFT_DEBUG)
         // increment count
@@ -120,15 +119,19 @@ void fft_task(void* task_param){
             }
         }
 
-        zcr(fft_analysis->input, N);
-
         // if peak is in range of 350-550 Hz, then it is a note
-        if ((freq1 > 350.0 && freq1 < 500.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
-            ESP_LOGI(TAG, "cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
-            // call the init_music functoin to play from existing audio file
-            // reference: i2s_adc_dac example
-            // play the music -- this is a blocking function
-            // init_music();
+        if ((freq1 > 370.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
+            ESP_LOGI(TAG, "note detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
+            // db confirm if the baby is crying by calculating zcr
+            bool is_cry = zcr(fft_analysis->input, N, fs);
+            if(is_cry){
+                ESP_LOGI(TAG, "cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
+                // call the init_music functoin to play from existing audio file. reference: i2s_adc_dac example
+                init_music(fft_task_handle);
+                // wait for the music task to finish
+                ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+                ESP_LOGI(TAG, "resumed the fft task");
+            }
 
         }
 
@@ -157,7 +160,7 @@ void init_fft(StreamBufferHandle_t fft_audio_buf){
     // create a delay
     xTaskNotifyWait(0, 0, NULL, wait_ticks);
     // create a task to run the fft
-    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, 4, NULL);
+    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, 4, &fft_task_handle);
 }
 
 
