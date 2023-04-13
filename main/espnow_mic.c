@@ -6,12 +6,27 @@
 
 
 static const char* TAG = "espnow_mic";
-StreamBufferHandle_t spk_stream_buf;
 StreamBufferHandle_t fft_stream_buf;
 StreamBufferHandle_t record_stream_buf;
 
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
+
+// suspend i2s_adc_capture_task function
+void suspend_adc_capture_task()
+{
+    assert(adcTaskHandle != NULL);
+    vTaskSuspend(adcTaskHandle);
+    // ESP_LOGI(TAG, "adc capture task suspended\n");
+}
+
+// resume i2s_adc_capture_task function
+void resume_adc_capture_task()
+{
+    assert(adcTaskHandle != NULL);
+    vTaskResume(adcTaskHandle);
+    // ESP_LOGI(TAG, "adc capture task resumed\n");
+}
 
 // reference: https://www.codeinsideout.com/blog/freertos/notification/#two-looping-tasks
 TaskHandle_t adcTaskHandle;
@@ -27,10 +42,35 @@ void i2s_adc_capture_task(void* task_param)
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
 
-
+    // enable i2s adc
     i2s_adc_enable(EXAMPLE_I2S_NUM);
+    // take the semaphore to enter critical section
+    xSemaphoreTake(xSemaphore, portMAX_DELAY);
+    ESP_LOGI(TAG, "semaphore taken");
 
     while(true){
+
+        // check if notification is received
+        if (ulTaskNotifyTake(pdTRUE, 0) == 1) {
+            ESP_LOGI(TAG, "adc task notified to stop");
+            // disable i2s adc
+            i2s_adc_disable(EXAMPLE_I2S_NUM);
+            ESP_LOGI(TAG, "adc disabled");
+            // give semaphore
+            xSemaphoreGive(xSemaphore);
+            ESP_LOGI(TAG, "semaphore given");
+            // check notification value to see if the task can be resumed
+            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            ESP_LOGI(TAG, "adc task notified to resume");
+            // Wait for semaphore to enter critical section
+            xSemaphoreTake(xSemaphore, portMAX_DELAY);
+            ESP_LOGI(TAG, "semaphore taken");
+            // enable i2s adc
+            i2s_adc_enable(EXAMPLE_I2S_NUM);
+            ESP_LOGI(TAG, "adc enabled");
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
+        
         // read from i2s bus and use errno to check if i2s_read is successful
         if (i2s_read(EXAMPLE_I2S_NUM, (char*)mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
             ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
@@ -79,6 +119,11 @@ void i2s_adc_capture_task(void* task_param)
         }
         #endif
     }
+    // disable i2s adc
+    i2s_adc_disable(EXAMPLE_I2S_NUM);
+    ESP_LOGI(TAG, "i2s adc disabled\n");
+    // delete semaphore
+    vSemaphoreDelete(xSemaphore);
     free(mic_read_buf);
     vTaskDelete(NULL);
     
@@ -105,9 +150,7 @@ void i2s_adc_data_scale(uint8_t * des_buff, uint8_t* src_buff, uint32_t len)
 // i2s dac playback task
 void i2s_dac_playback_task(void* task_param) {
     // get the stream buffer handle from the task parameter
-    spk_stream_buf = (StreamBufferHandle_t)task_param;
-
-    int intialized = 1;
+    StreamBufferHandle_t spk_stream_buf = (StreamBufferHandle_t)task_param;
 
     size_t bytes_written = 0;
     spk_write_buf = (uint8_t*) calloc(BYTE_RATE,sizeof(char));
@@ -119,17 +162,14 @@ void i2s_dac_playback_task(void* task_param) {
         if (num_bytes > 0) {
             // send data to i2s dac
             esp_err_t err = i2s_write(EXAMPLE_I2S_NUM, spk_write_buf, num_bytes, &bytes_written, portMAX_DELAY);
-            if ((err != ESP_OK) & (intialized == 0)) {
-                printf("Error writing I2S: %0x\n", err);
-                deinit_config();
-                exit(err);
+            if ((err != ESP_OK)) {
+                ESP_LOGE(TAG,"Error writing I2S: %0x\n", err);
             }
             // reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
             // reference: https://docs.espressif.com/projects/esp-idf/en/v4.2/esp32/api-reference/peripherals/i2s.html#_CPPv49i2s_write10i2s_port_tPKv6size_tP6size_t10TickType_t
             // reference: i2s_write(I2S_NUM, samples_data, ((bits+8)/16)*SAMPLE_PER_CYCLE*4, &i2s_bytes_write, 100); 
             // this number is  without adc to dac scaling that is done in the i2s_adc_data_scale function, the i2s_write function needs to be called with the above parameters
         }
-        intialized = 0;
         
         #if EXAMPLE_I2S_BUF_DEBUG
             mic_disp_buf ((uint8_t*)spk_write_buf, EXAMPLE_I2S_READ_LEN);
@@ -142,7 +182,7 @@ void i2s_dac_playback_task(void* task_param) {
 
 /* call the init_auidio function for starting adc and filling the buf -second */
 esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHandle_t fft_audio_buf, StreamBufferHandle_t record_audio_buf){ 
-    printf("initializing i2s mic\n");
+    ESP_LOGI(TAG,"initializing i2s mic\n");
     fft_stream_buf = fft_audio_buf;
     record_stream_buf = record_audio_buf;
 
@@ -154,7 +194,7 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
 
 /* call the init_auidio function for starting adc and filling the buf -second */
 esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){ 
-    printf("initializing i2s spk\n");
+    ESP_LOGI(TAG,"initializing i2s spk\n");
     // /* thread for filling the buf for the reciever and dac */
     xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
 
@@ -170,13 +210,13 @@ esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){
 void mic_disp_buf(uint8_t* buf, int length)
 {
 #if EXAMPLE_I2S_BUF_DEBUG
-    printf("\n=== MIC ===\n");
+    ESP_LOGI(TAG,"\n=== MIC ===\n");
     for (int i = 0; i < length; i++) {
-        printf("%02x ", buf[i]);
+        ESP_LOGI(TAG,"%02x ", buf[i]);
         if ((i + 1) % 8 == 0) {
-            printf("\n");
+            ESP_LOGI(TAG,"\n");
         }
     }
-    printf("\n=== MIC ===\n");
+    ESP_LOGI(TAG,"\n=== MIC ===\n");
 #endif
 }
