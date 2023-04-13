@@ -40,7 +40,7 @@
 
 
 #define RECV        0
-#define FFT_TASK    0
+#define FFT_TASK    1
 #define RECORD_TASK 0
 
 /** wifi configuration */
