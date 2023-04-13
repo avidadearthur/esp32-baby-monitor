@@ -28,7 +28,14 @@
     "regex": "c",
     "utility": "c",
     "audio_example_file.h": "c",
+<<<<<<< HEAD
     "i2s_recv_std_config.h": "c"
   },
   "idf.portWin": "COM6"
 }
+=======
+    "i2s_recv_std_config.h": "c",
+    "string": "c"
+  }
+}
+>>>>>>> b6319b6 (reupdate music to ensure)

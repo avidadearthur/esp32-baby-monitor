@@ -8,9 +8,13 @@
 static const char* TAG = "espnow_mic";
 StreamBufferHandle_t fft_stream_buf;
 StreamBufferHandle_t record_stream_buf;
+extern SemaphoreHandle_t xSemaphore;
 
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
+
+// reference: https://www.codeinsideout.com/blog/freertos/notification/#two-looping-tasks
+TaskHandle_t adcTaskHandle;
 
 // suspend i2s_adc_capture_task function
 void suspend_adc_capture_task()
@@ -28,8 +32,7 @@ void resume_adc_capture_task()
     // ESP_LOGI(TAG, "adc capture task resumed\n");
 }
 
-// reference: https://www.codeinsideout.com/blog/freertos/notification/#two-looping-tasks
-TaskHandle_t adcTaskHandle;
+
 // i2s adc capture task
 void i2s_adc_capture_task(void* task_param)
 {

@@ -1,17 +1,20 @@
 #include "music.h"
 #include "audio_example_file.h"
+#include "espnow_mic.h"
 
 static const char* TAG = "music_task";
 
 // reference: i2s_adc_dac example
+TaskHandle_t fftTaskHandle = NULL;
+TaskHandle_t musicTaskHandle = NULL;
+extern SemaphoreHandle_t xSemaphore;
 extern TaskHandle_t adcTaskHandle;
-
 /**
  * @brief Reset i2s clock and mode
  */
 void example_reset_play_mode(void)
 {
-    i2s_set_clk(EXAMPLE_I2S_NUM, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_CHANNEL_NUM);
+    i2s_set_clk(EXAMPLE_I2S_NUM, EXAMPLE_I2S_SAMPLE_RATE*1.25, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_CHANNEL_NUM);
 }
 
 /**
@@ -19,7 +22,11 @@ void example_reset_play_mode(void)
  */
 void example_set_file_play_mode(void)
 {
-    i2s_set_clk(EXAMPLE_I2S_NUM, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, 1); // channel 1 represent i2s_channel_t I2S_CHANNEL_MONO
+    //init DAC pad (GPIO25 & GPIO26) & mode
+    i2s_set_pin(EXAMPLE_I2S_NUM, NULL);
+    // set i2s clock source for i2s spk
+    i2s_set_clk(EXAMPLE_I2S_NUM, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, 1); // I2S_CHANNEL_MONO (1)
+    i2s_set_sample_rates(EXAMPLE_I2S_NUM, EXAMPLE_I2S_SAMPLE_RATE/2); 
 }
 
 /**
@@ -52,23 +59,34 @@ int example_i2s_dac_data_scale(uint8_t* d_buff, uint8_t* s_buff, uint32_t len)
  *        1. Play an example audio file(file format: 8bit/8khz/single channel)
  *        2. Loop back to step 3
  */
-void music_task(void*arg)
+void music_task(void* arg)
 {
     int i2s_read_len = EXAMPLE_I2S_READ_LEN;
     size_t bytes_written;
 
+    // get the fft task handle
+    fftTaskHandle = (TaskHandle_t) arg;
+    // confirm that fftTaskHandle is not NULL
+    assert(fftTaskHandle != NULL);
+    // suspend the fft task
+    vTaskSuspend(fftTaskHandle);
+
     // confirm that adcTaskHandle is not NULL
     assert(adcTaskHandle != NULL);
-    // suspend adc task to disable ADC
-    vTaskSuspend(adcTaskHandle);
-    // disable ADC
-    i2s_adc_disable(EXAMPLE_I2S_NUM);
+    // // notify the adc task to stop capturing using interrupt
+    vTaskNotifyGiveFromISR(adcTaskHandle, NULL);
+    // notify the adc task to start capturing using xTaskNotify
+    // xTaskNotify(adcTaskHandle, 1, eSetValueWithoutOverwrite);
+    // wait for the semaphore
+    xSemaphoreTake(xSemaphore, portMAX_DELAY);
+    // suspend adc task
+    suspend_adc_capture_task();
 
     // allocate buffer for i2s read data
     uint8_t* i2s_write_buff = (uint8_t*) calloc(i2s_read_len, sizeof(char));
 
-    //1. Play an example audio file(file format: 8bit/16khz/single channel)
-    ESP_LOGI(TAG, "Playing file example: \n");
+    // play an example audio file(file format: 8bit/16khz/single channel)
+    ESP_LOGI(TAG, "playing crying soothing music: \n");
     int offset = 0;
     int tot_size = sizeof(audio_table);
     example_set_file_play_mode();
@@ -80,19 +98,30 @@ void music_task(void*arg)
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
     example_reset_play_mode();
+
     // free buffer
     free(i2s_write_buff);
-    // enable ADC
-    i2s_adc_enable(EXAMPLE_I2S_NUM);
+    // give the semaphore
+    xSemaphoreGive(xSemaphore);
+    // ESP_LOGI(TAG, "semaphore given");
     // resume adc task
-    vTaskResume(adcTaskHandle);
-    
+    resume_adc_capture_task();
+    // notify the adc task to start capturing using xTaskNotify
+    xTaskNotify(adcTaskHandle, 1, eSetValueWithoutOverwrite);
+    // ESP_LOGI(TAG, "notify the adc task");
+    // resume the fft task
+    vTaskResume(fftTaskHandle);
+    // notify the fft task to start capturing using xTaskNotify
+    xTaskNotify(fftTaskHandle, 1, eSetValueWithoutOverwrite);
+
     vTaskDelete(NULL);
 }
 
-esp_err_t init_music(void)
+esp_err_t init_music(TaskHandle_t fft_task_handle)
 {
+    // set the log level for the i2s driver
     esp_log_level_set("I2S", ESP_LOG_INFO);
-    xTaskCreate(music_task, "music_task", 2048, NULL, 4, NULL);
+    // create task for music_task function and pass the fft task handle as a parameter
+    xTaskCreate(music_task, "music_task", 4096, (void*) fft_task_handle, 4, &musicTaskHandle);
     return ESP_OK;
 }
