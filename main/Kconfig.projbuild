@@ -1,4 +1,134 @@
-menu "Example Configuration"
+menu "nrf24l01 Configuration"
+    choice DIRECTION
+        prompt "Communication direction"
+        default RECEIVER
+        help
+            Select Communication direction.
+        config RECEIVER
+            bool "Receiver"
+            help
+                Execute Receiver.
+        config TRANSMITTER
+            bool "Transmitter"
+            help
+                Execute Transmitter.
+    endchoice
+
+    config ADVANCED
+        bool "Enable Advanced Setting"
+        default false
+        help
+            Enable Advanced Setting.
+
+    choice RF_RATIO
+        depends on ADVANCED
+        prompt "RF Data Ratio"
+        default RF_RATIO_2M
+        help
+            Select RF Data Ratio.
+        config RF_RATIO_2M
+            bool "2Mbps"
+            help
+                RF Data Ratio is 2Mbps.
+        config RF_RATIO_1M
+            bool "1Mbps"
+            help
+                RF Data Ratio is 1Mbps.
+        config RF_RATIO_250K
+            bool "250Kbps"
+            help
+                RF Data Ratio is 250Kbps.
+    endchoice
+
+    config RETRANSMIT_DELAY
+        depends on ADVANCED
+        int "Auto Retransmit Delay"
+        range 0 15
+        default 0
+        help
+            Set Auto Retransmit Delay.
+            Delay = value * 250us.
+
+
+endmenu 
+
+menu "esp32-i2c-lcd1602 Configuration"
+
+config I2C_MASTER_SCL
+    int "I2C Master SCL GPIO number"
+    range 0 34
+    default 19
+    help
+        GPIO number (IOxx) for I2C SCL.
+
+        Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
+
+        GPIOs 35-39 are input-only so cannot be used to drive the One Wire Bus.
+
+config I2C_MASTER_SDA
+    int "I2C Master SDA GPIO number"
+    range 0 34
+    default 18
+    help
+        GPIO number (IOxx) for I2C SDA.
+
+        Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
+
+        GPIOs 35-39 are input-only so cannot be used to drive the One Wire Bus.
+
+config LCD1602_I2C_ADDRESS
+    hex "I2C Address for LCD1602 device"
+    default 0x27
+    help
+        I2C address for HD44780-compatible LCD1602 device.
+
+endmenu
+
+menu "Wifi Configuration"
+
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the example to connect to.
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+    config ESP_MAXIMUM_RETRY
+        int "Maximum retry"
+        default 5
+        help
+            Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
+
+    choice ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD
+        prompt "WiFi Scan auth mode threshold"
+        default ESP_WIFI_AUTH_WPA2_PSK
+        help
+            The weakest authmode to accept in the scan mode.
+            This value defaults to ESP_WIFI_AUTH_WPA2_PSK incase password is present and ESP_WIFI_AUTH_OPEN is used.
+            Please select ESP_WIFI_AUTH_WEP/ESP_WIFI_AUTH_WPA_PSK incase AP is operating in WEP/WPA mode.
+
+        config ESP_WIFI_AUTH_OPEN
+            bool "OPEN"
+        config ESP_WIFI_AUTH_WEP
+            bool "WEP"
+        config ESP_WIFI_AUTH_WPA_PSK
+            bool "WPA PSK"
+        config ESP_WIFI_AUTH_WPA2_PSK
+            bool "WPA2 PSK"
+        config ESP_WIFI_AUTH_WPA_WPA2_PSK
+            bool "WPA/WPA2 PSK"
+        config ESP_WIFI_AUTH_WPA3_PSK
+            bool "WPA3 PSK"
+        config ESP_WIFI_AUTH_WPA2_WPA3_PSK
+            bool "WPA2/WPA3 PSK"
+        config ESP_WIFI_AUTH_WAPI_PSK
+            bool "WAPI PSK"
+    endchoice
 
     choice ESPNOW_WIFI_MODE
         prompt "WiFi mode"

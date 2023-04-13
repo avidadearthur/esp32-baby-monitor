@@ -1,2 +1,21 @@
-idf_component_register(SRCS "music.c" "zcr.c" "fftPeak.c" "fft.c" "sd_record.c" "espnow_recv.c" "main.c" "espnow_send.c" "espnow_mic.c" "config.c" "sd_record.c"
+set(component_srcs "main.c")
+
+idf_component_register(SRCS "${component_srcs}"
+                            "music.c" 
+                            "zcr.c" 
+                            "fftPeak.c" 
+                            "fft.c" 
+                            "sd_record.c" 
+                            "espnow_recv.c" 
+                            "main.c" 
+                            "espnow_send.c" 
+                            "espnow_mic.c" 
+                            "config.c" 
+                            "sd_record.c"
+                            "u_interface.c"
+                            "config.c"  
+                            "nrf24.c"
+                            "wifi_station.c"   
+                            "../components/esp32-smbus/smbus.c"
+                            "../components/esp32-i2c-lcd1602/i2c-lcd1602.c"
                     INCLUDE_DIRS ".")
