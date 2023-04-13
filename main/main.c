@@ -14,6 +14,7 @@ static StreamBufferHandle_t network_stream_buf; // only for reciever
 static StreamBufferHandle_t mic_stream_buf;
 static StreamBufferHandle_t fft_stream_buf; // only for transmitter
 static StreamBufferHandle_t record_stream_buf; // only for transmitter
+SemaphoreHandle_t xSemaphore = NULL;
 #endif
 
 
@@ -72,6 +73,9 @@ void app_main(void) {
     init_config();
 
 #if (!RECV)
+    // Create semaphore
+    xSemaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(xSemaphore);
     // initialize the transmitter and audio
     init_transmit(mic_stream_buf);
     init_audio_trans(mic_stream_buf, fft_stream_buf,record_stream_buf);
