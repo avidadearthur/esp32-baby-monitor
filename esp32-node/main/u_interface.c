@@ -322,6 +322,18 @@ void datetime_task(void *pvParameter)
     }
 }
 
+void update_min_max_temp(float temp)
+{
+    if (temp > current_max_temp)
+    {
+        current_max_temp = temp;
+    }
+    if (temp < current_min_temp || current_min_temp == 0.0)
+    {
+        current_min_temp = temp;
+    }
+}
+
 void home_task(void *pvParameter)
 {
     // read the stream of data from the nrf_data_xStream
@@ -360,6 +372,9 @@ void home_task(void *pvParameter)
         // Convert the combined temperature back to a float
         temp_float = ((float)temp_combined) / 10.0;
 
+        // call helper function to update the min and max temp
+        update_min_max_temp(temp_float);
+
         // format string to print
         char nrf_data_string[15];
         sprintf(nrf_data_string, "%.1f", temp_float);
@@ -371,12 +386,22 @@ void home_task(void *pvParameter)
         if (temp_float < temp_threshold_min || temp_float > temp_threshold_max)
         {
             i2c_lcd1602_move_cursor(lcd_info, 7, 1);
-            i2c_lcd1602_write_string(lcd_info, "!");
+            i2c_lcd1602_write_string(lcd_info, "T!");
         }
         else
         {
             i2c_lcd1602_move_cursor(lcd_info, 7, 1);
-            i2c_lcd1602_write_string(lcd_info, " ");
+            i2c_lcd1602_write_string(lcd_info, "  ");
+        }
+        if (data[2] == 1)
+        {
+            i2c_lcd1602_move_cursor(lcd_info, 14, 1);
+            i2c_lcd1602_write_string(lcd_info, "B!");
+        }
+        else if (data[2] == 0)
+        {
+            i2c_lcd1602_move_cursor(lcd_info, 14, 1);
+            i2c_lcd1602_write_string(lcd_info, "  ");
         }
     }
 }
