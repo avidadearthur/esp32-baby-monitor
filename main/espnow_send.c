@@ -60,6 +60,7 @@ void espnow_send_task(void* task_param) {
                 packet_loss = 0;
                 // reset the timer
                 start_time = time(NULL);
+            }
         #endif
     }
 }
