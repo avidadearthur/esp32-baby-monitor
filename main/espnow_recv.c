@@ -45,14 +45,14 @@ void init_recv(StreamBufferHandle_t net_stream_buf){
 void recv_disp_buf(uint8_t* buf, int length)
 {
 #if EXAMPLE_I2S_BUF_DEBUG
-    printf("\n=== RECV ===\n");
+    ESP_LOGI(TAG,"\n=== RECV ===\n");
     for (int i = 0; i < length; i++) {
-        printf("%02x ", buf[i]);
+        ESP_LOGI(TAG,"%02x ", buf[i]);
         if ((i + 1) % 8 == 0) {
-            printf("\n");
+            ESP_LOGI(TAG,"\n");
         }
     }
-    printf("\n=== RECV ===\n");
+    ESP_LOGI(TAG,"\n=== RECV ===\n");
 #endif
 }
 
