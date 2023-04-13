@@ -16,20 +16,6 @@
 // define to enable lcd and button interrupts
 #define UI_CONNECTED 1
 
-// Button interrupt stuff
-#define ESP_INR_FLAG_DEFAULT 0
-#define ON_OFF_BUTTON_PIN 33
-#define SET_BUTTON_PIN 32
-#define UP_BUTTON_PIN 35
-#define DOWN_BUTTON_PIN 34
-
-#define BUTTON_DEBOUNCE_TIME_MS 200
-
-#define BUTTON_1_PIN 33
-#define BUTTON_2_PIN 32
-#define BUTTON_3_PIN 35
-#define BUTTON_4_PIN 34
-
 // LCD1602
 #define LCD_NUM_ROWS 2
 #define LCD_NUM_COLUMNS 16

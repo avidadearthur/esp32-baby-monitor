@@ -1,4 +1,4 @@
-menu "Application Configuration"
+menu "nrf24l01 Configuration"
 
 	choice DIRECTION
 		prompt "Communication direction"
