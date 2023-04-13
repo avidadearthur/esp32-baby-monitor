@@ -9,5 +9,4 @@ int example_i2s_dac_data_scale(uint8_t* d_buff, uint8_t* s_buff, uint32_t len);
 void music_task(void*arg);
 esp_err_t init_music(void);
 
-
-#endif
+#endif`
