@@ -10,6 +10,7 @@ void app_main(void)
 {
 
 #if CONFIG_RECEIVER
+#if UI_CONNECTED
 	const size_t xStreamBufferSizeBytes = 100, xTriggerLevel = 1;
 
 	nrf_data_xStream = xStreamBufferCreate(xStreamBufferSizeBytes, xTriggerLevel);
@@ -41,7 +42,7 @@ void app_main(void)
 	sntp_setservername(0, "pool.ntp.org");
 	sntp_init();
 	/*------------------------Datetime init-------------------------------*/
-#if UI_CONNECTED
+
 	init_nrf24(nrf_data_xStream);
 	init_u_interface(nrf_data_xStream);
 #endif

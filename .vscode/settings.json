@@ -1,0 +1,4 @@
+{
+    "idf.portWin": "COM6",
+    "cmake.sourceDirectory": "${workspaceFolder}/components/mirf"
+}

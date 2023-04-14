@@ -3,6 +3,7 @@
     "idf.portWin": "COM6",
     "files.associations": {
         "smbus.h": "c",
-        "wifi_station.h": "c"
+        "wifi_station.h": "c",
+        "config.h": "c"
     }
 }
