@@ -87,24 +87,15 @@ void receiver(void *xStream)
         {
             Nrf24_getData(&dev, mydata.data);
             mydata.now_time = xTaskGetTickCount();
-            ESP_LOGI(pcTaskGetName(0), "Got data:%d", mydata.now_time);
+
+            // log the data
+            ESP_LOGI(pcTaskGetName(0), "Data: %d, %d, %d", mydata.data[0], mydata.data[1], mydata.data[2]);
 
             size_t bytes_sent = xStreamBufferSend(nrf_data_xStream, (void *)mydata.data, sizeof(mydata.data), portMAX_DELAY);
             if (bytes_sent != sizeof(mydata.data))
             {
                 ESP_LOGE(pcTaskGetName(0), "Error sending data to stream buffer");
             }
-
-            // // put mydata.now_time into buffer
-            // buffer[0] = mydata.now_time;
-            // // log buffer value
-            // ESP_LOGI(pcTaskGetName(0), "buffer[0]=%lu", buffer[0]);
-            // // Send and check bytes sent
-            // size_t bytes_sent = xStreamBufferSend(nrf_data_xStream, (void *)buffer, sizeof(uint32_t), portMAX_DELAY);
-            // if (bytes_sent != sizeof(uint32_t))
-            // {
-            //     ESP_LOGE(pcTaskGetName(0), "Error sending data to stream buffer");
-            // }
         }
         vTaskDelay(1);
     }
