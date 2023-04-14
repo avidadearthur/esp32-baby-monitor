@@ -108,15 +108,6 @@ void app_main(void)
         ESP_LOGE(TAG, "main.c - Error creating stream buffer");
     }
 
-    // Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
     /*------------------------Datetime init-------------------------------*/
     // Set the system timezone
     setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
