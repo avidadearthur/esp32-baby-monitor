@@ -41,9 +41,9 @@
 #include "../components/esp32-smbus/smbus.h"
 #include "../components/esp32-i2c-lcd1602/i2c-lcd1602.h"
 
-#define RECV 1
-#define UI_CONNECTED 1
-#define FFT_TASK 0
+#define RECV 0
+#define UI_CONNECTED 0
+#define FFT_TASK 1
 #define RECORD_TASK 0
 
 /** wifi configuration */
@@ -64,6 +64,9 @@
 #define ADC1_TEST_CHANNEL (ADC1_CHANNEL_7)
 // i2s mic and adc settings
 #define V_REF 1100
+
+// define idle task priority
+#define IDLE_TASK_PRIO (1)
 
 // i2s number for interface channel
 #define EXAMPLE_I2S_NUM (0)

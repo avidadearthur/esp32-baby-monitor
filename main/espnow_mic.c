@@ -8,13 +8,16 @@
 static const char* TAG = "espnow_mic";
 StreamBufferHandle_t fft_stream_buf;
 StreamBufferHandle_t record_stream_buf;
-extern SemaphoreHandle_t xSemaphore;
+// extern SemaphoreHandle_t xSemaphore;
+extern TaskHandle_t espnow_send_task_handle;
+extern TaskHandle_t music_play_task_handle;
+extern TaskHandle_t fft_task_handle;
 
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
 
 // reference: https://www.codeinsideout.com/blog/freertos/notification/#two-looping-tasks
-TaskHandle_t adcTaskHandle;
+TaskHandle_t adcTaskHandle = NULL;
 
 // suspend i2s_adc_capture_task function
 void suspend_adc_capture_task()
@@ -47,86 +50,127 @@ void i2s_adc_capture_task(void* task_param)
 
     // enable i2s adc
     i2s_adc_enable(EXAMPLE_I2S_NUM);
-    // take the semaphore to enter critical section
-    xSemaphoreTake(xSemaphore, portMAX_DELAY);
-    ESP_LOGI(TAG, "semaphore taken");
+    // // take the semaphore to enter critical section
+    // xSemaphoreTake(xSemaphore, portMAX_DELAY);
+    // ESP_LOGI(TAG, "semaphore taken");
 
     while(true){
 
         // check if notification is received
-        if (ulTaskNotifyTake(pdTRUE, 0) == 1) {
-            ESP_LOGI(TAG, "adc task notified to stop");
+        if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10)) == pdPASS) {
+            // ESP_LOGI(TAG, "adc task notified to stop");
+            // // disable i2s adc
+            // i2s_adc_disable(EXAMPLE_I2S_NUM);
+            // ESP_LOGI(TAG, "adc disabled");
+            // // give semaphore
+            // xSemaphoreGive(xSemaphore);
+            // ESP_LOGI(TAG, "semaphore given");
+            // // check notification value to see if the task can be resumed
+            // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            // ESP_LOGI(TAG, "adc task notified to resume");
+            // // flush the stream buffer
+            // xStreamBufferReset(mic_stream_buf);
+            // ESP_LOGI(TAG, "stream buffer cleared");
+            // // clear the read buffer
+            // memset(mic_read_buf, 0, READ_BUF_SIZE_BYTES);
+            // ESP_LOGI(TAG, "read buffer cleared");
+
+            // // clear the fft stream buffer
+            // #if FFT_TASK
+            // xStreamBufferReset(fft_stream_buf);
+            // ESP_LOGI(TAG, "fft stream buffer cleared");
+            // #endif
+
+            // // enable i2s adc
+            // i2s_adc_enable(EXAMPLE_I2S_NUM);
+            // ESP_LOGI(TAG, "adc enabled");
+            // // take the semaphore to enter critical section
+            // xSemaphoreTake(xSemaphore, portMAX_DELAY);
+            // ESP_LOGI(TAG, "semaphore taken");
+            // // notify music task to resume
+            // xTaskNotifyGive(music_play_task_handle);
+            // ESP_LOGI(TAG, "music task notified to resume");
+
+            // suspend espnow send task
+            // assert(espnow_send_task_handle != NULL);
+            // vTaskSuspend(espnow_send_task_handle);
             // disable i2s adc
             i2s_adc_disable(EXAMPLE_I2S_NUM);
-            ESP_LOGI(TAG, "adc disabled");
-            // give semaphore
-            xSemaphoreGive(xSemaphore);
-            ESP_LOGI(TAG, "semaphore given");
-            // check notification value to see if the task can be resumed
+            // flush the stream buffer
+            // xStreamBufferReset(mic_stream_buf);
+            // clear the read buffer
+            // memset(mic_read_buf, 0, READ_BUF_SIZE_BYTES);
+            // clear the fft stream buffer
+            #if FFT_TASK
+            xStreamBufferReset(fft_stream_buf);
+            #endif
+            // notify music task to resume playing
+            xTaskNotifyGive(music_play_task_handle);
+            // wait for notification to resume adc capture task
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-            ESP_LOGI(TAG, "adc task notified to resume");
-            // Wait for semaphore to enter critical section
-            xSemaphoreTake(xSemaphore, portMAX_DELAY);
-            ESP_LOGI(TAG, "semaphore taken");
             // enable i2s adc
             i2s_adc_enable(EXAMPLE_I2S_NUM);
-            ESP_LOGI(TAG, "adc enabled");
-            vTaskDelay(100 / portTICK_PERIOD_MS);
-        }
-        
-        // read from i2s bus and use errno to check if i2s_read is successful
-        if (i2s_read(EXAMPLE_I2S_NUM, (char*)mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
-            ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
-            deinit_config();
-            exit(errno);
-        }
-        // check if the number of bytes read is equal to the number of bytes to read
-        if (bytes_read != READ_BUF_SIZE_BYTES) {
-            ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
-            deinit_config();
-            exit(errno);
-        }
+            // // resume espnow send task
+            // vTaskResume(espnow_send_task_handle);
+            // notify music task to resume finishing
+            xTaskNotifyGive(music_play_task_handle);
 
-        /**
-         * xstreambuffersend to fft task
-        */
-        #if FFT_TASK
-        size_t byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, EXAMPLE_I2S_READ_LEN/16, portMAX_DELAY);
-        if (byte_sent != (EXAMPLE_I2S_READ_LEN/16)) {
-            ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, (EXAMPLE_I2S_READ_LEN/16));
-            deinit_config();
-            exit(errno);
-        }
-        #endif
+        }else{       
+            // read from i2s bus and use errno to check if i2s_read is successful
+            if (i2s_read(EXAMPLE_I2S_NUM, (char*)mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
+                ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
+                deinit_config();
+                exit(errno);
+            }
 
-        // scale the data to 8 bit
-        i2s_adc_data_scale(mic_read_buf, mic_read_buf, READ_BUF_SIZE_BYTES);
+            // check if the number of bytes read is equal to the number of bytes to read
+            if (bytes_read != READ_BUF_SIZE_BYTES) {
+                ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
+                deinit_config();
+                exit(errno);
+            }
 
-        /**
-         * xstreambuffersend is a blocking function that sends data to the stream buffer,
-         * esp_now_send needs to send 128 packets of 250 bytes each, so the stream buffer needs to be able to hold at least 2-3 times of 128 * 250 bytes = BYTE_RATE bytes
-         * */ 
-        size_t espnow_byte = xStreamBufferSend(mic_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
-        if (espnow_byte != READ_BUF_SIZE_BYTES) {
-            ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", espnow_byte, READ_BUF_SIZE_BYTES);
-        }
+            /**
+             * xstreambuffersend to fft task
+            */
+            #if FFT_TASK
+            size_t byte_sent = xStreamBufferSend(fft_stream_buf,(void*) mic_read_buf, EXAMPLE_I2S_READ_LEN/16, portMAX_DELAY);
+            if (byte_sent != (EXAMPLE_I2S_READ_LEN/16)) {
+                ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, (EXAMPLE_I2S_READ_LEN/16));
+                deinit_config();
+                exit(errno);
+            }
+            #endif
 
-        /**
-         * xstreambuffersend to sd record task
-        */
-        #if RECORD_TASK
-        size_t record_byte = xStreamBufferSend(record_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
-        // check if bytes sent is equal to bytes read
-        if (record_byte != READ_BUF_SIZE_BYTES) {
-            ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", record_byte, READ_BUF_SIZE_BYTES);
+            // scale the data to 8 bit
+            i2s_adc_data_scale(mic_read_buf, mic_read_buf, READ_BUF_SIZE_BYTES);
+
+            /**
+             * xstreambuffersend is a blocking function that sends data to the stream buffer,
+             * esp_now_send needs to send 128 packets of 250 bytes each, so the stream buffer needs to be able to hold at least 2-3 times of 128 * 250 bytes = BYTE_RATE bytes
+             * */ 
+            size_t espnow_byte = xStreamBufferSend(mic_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
+            if (espnow_byte != READ_BUF_SIZE_BYTES) {
+                ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", espnow_byte, READ_BUF_SIZE_BYTES);
+            }
+
+            /**
+             * xstreambuffersend to sd record task
+            */
+            #if RECORD_TASK
+            size_t record_byte = xStreamBufferSend(record_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
+            // check if bytes sent is equal to bytes read
+            if (record_byte != READ_BUF_SIZE_BYTES) {
+                ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", record_byte, READ_BUF_SIZE_BYTES);
+            }
+            #endif
         }
-        #endif
     }
     // disable i2s adc
     i2s_adc_disable(EXAMPLE_I2S_NUM);
     ESP_LOGI(TAG, "i2s adc disabled\n");
     // delete semaphore
-    vSemaphoreDelete(xSemaphore);
+    // vSemaphoreDelete(xSemaphore);
     free(mic_read_buf);
     vTaskDelete(NULL);
     
@@ -189,8 +233,8 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
     fft_stream_buf = fft_audio_buf;
     record_stream_buf = record_audio_buf;
 
-    /* thread for adc and filling the buf for the transmitter */
-    xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, 4, &adcTaskHandle); 
+    // create the adc capture task and pin the task to core 0
+    xTaskCreatePinnedToCore(i2s_adc_capture_task, "i2s_adc_capture_task", 2048, (void*) mic_stream_buf, 4, NULL, 0);
 
     return ESP_OK;
 }

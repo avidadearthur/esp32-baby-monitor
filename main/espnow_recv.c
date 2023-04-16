@@ -19,6 +19,10 @@ void espnow_recv_task(const uint8_t* mac_addr, const uint8_t* data, int len) {
     if(xStreamBufferSend(network_stream_buf, data, len, portMAX_DELAY) != len){
         ESP_LOGE(TAG, "Failed to send data to network stream buffer: %d", errno);
         exit(errno);
+    }else if (len == 0){
+        ESP_LOGI(TAG, "No data to send: %d", errno);
+        // let task sleep for 5 seconds
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
     #if ESPNOW_RECV_DEBUG
     recv_disp_buf((uint8_t*)data, len);

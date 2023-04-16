@@ -12,7 +12,6 @@
 #define FREQ_STEP (EXAMPLE_I2S_SAMPLE_RATE / N_SAMPLES)
 
 #define FFT_DEBUG 0
-#define FFT_ESP_DSP 0
 
 static const char* TAG = "FFTPEAK";
 TaskHandle_t fft_task_handle = NULL;
@@ -52,7 +51,7 @@ void fft_task(void* task_param){
 
 
     // create a buffer of size N to hold the fft input signal
-    uint8_t* fft_input = calloc(N, sizeof(uint8_t));
+    uint8_t* fft_input = calloc(N, sizeof(char));
     // check if fft_input is allocated
     if (fft_input == NULL){
         ESP_LOGE(TAG, "fft_input is NULL");
@@ -131,12 +130,22 @@ void fft_task(void* task_param){
                 // wait for the music task to finish
                 ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
                 ESP_LOGI(TAG, "resumed the fft task");
+                // check the status of the music task
             }
 
         }
+        // clear the power array
+        memset(power, 0, (fft_analysis->size)/2+1);
+        // clear the fft input array
+        memset(fft_input, 0, (fft_analysis->size)/2+1);
+        // clear the fft output array
+        memset(fft_analysis->output, 0, (fft_analysis->size));
+        // clear the fft input array
+        memset(fft_analysis->input, 0, (fft_analysis->size));
+
 
         #if(FFT_DEBUG)
-            if ((count % (EXAMPLE_I2S_SAMPLE_RATE/N_SAMPLES) == 0) & (count > 30)) {
+            if ((count % (EXAMPLE_I2S_SAMPLE_RATE/N_SAMPLES) == 0) & (count > 3000)) {
                 ESP_LOGI(TAG, "peak 1 at frequency %lf Hz with amplitude %lf \n", freq1, max1);
                 ESP_LOGI(TAG, "peak 2 at frequency %lf Hz with amplitude %lf \n", freq2, max2);
                 count = 0;
