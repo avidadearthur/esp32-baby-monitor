@@ -29,6 +29,11 @@ void espnow_send_task(void* task_param) {
     #endif
 
     while (true) {
+        // if the stream buffer is empty, wait for the data
+        while(xStreamBufferIsEmpty(mic_stream_buf) == pdTRUE){
+            // delay 1s
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
 
         // read from the mic stream buffer until it is empty
         size_t num_bytes = xStreamBufferReceive(mic_stream_buf, esp_now_send_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
@@ -43,9 +48,6 @@ void espnow_send_task(void* task_param) {
                     // send_disp_buf((uint8_t*)esp_now_send_buf, READ_BUF_SIZE_BYTES);
                 }
             #endif
-        }
-        else if (num_bytes == 0) {
-            ESP_LOGE(TAG, "No data in stream buffer");
         }
         #if EXAMPLE_I2S_BUF_DEBUG
             // check if the timer has reached 10 second
@@ -66,7 +68,10 @@ void espnow_send_task(void* task_param) {
 /* sender initialization */
 void init_transmit(StreamBufferHandle_t mic_stream_buf){
     ESP_LOGI(TAG,"Init transport!\n");
-    xTaskCreate(espnow_send_task, "espnow_send_task", 4096, (void*) mic_stream_buf, 4, &espnow_send_task_handle); // create another thread to send data
+    xTaskCreatePinnedToCore(espnow_send_task, "espnow_send_task", 1024, (void*) mic_stream_buf, IDLE_TASK_PRIO, &espnow_send_task_handle, 0);
+    // confirm that the task is created
+    configASSERT(espnow_send_task_handle);
+
 }
 
 /** debug functions below */

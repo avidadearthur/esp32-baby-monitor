@@ -4,12 +4,13 @@
 
 static const char* TAG = "music_task";
 
-// reference: i2s_adc_dac example
-TaskHandle_t fftTaskHandle = NULL;
 TaskHandle_t music_play_task_handle = NULL;
-// extern SemaphoreHandle_t xSemaphore;
-extern TaskHandle_t adcTaskHandle;
-extern TaskHandle_t espnow_send_task_handle;
+
+// get task handle of music play task
+TaskHandle_t get_music_play_task_handle(){
+    assert(music_play_task_handle != NULL);
+    return music_play_task_handle;
+}
 
 /**
  * @brief Reset i2s clock and mode
@@ -61,43 +62,27 @@ int example_i2s_dac_data_scale(uint8_t* d_buff, uint8_t* s_buff, uint32_t len)
  *        1. Play an example audio file(file format: 8bit/8khz/single channel)
  *        2. Loop back to step 3
  */
-void music_task(void* arg)
+void music_task(void* task_param)
 {
     int i2s_read_len = EXAMPLE_I2S_READ_LEN;
     size_t bytes_written;
-
+    // get the adc task handle by name
+    TaskHandle_t adcTaskHandle = get_adc_task_handle();
+    assert(adcTaskHandle != NULL);
     // get the fft task handle
-    fftTaskHandle = (TaskHandle_t) arg;
-    // confirm that fftTaskHandle is not NULL
+    TaskHandle_t fftTaskHandle = (TaskHandle_t) task_param;
     assert(fftTaskHandle != NULL);
     // suspend the fft task
     vTaskSuspend(fftTaskHandle);
-    // confirm that espnow_send_task_handle is not NULL
-    assert(espnow_send_task_handle != NULL);
-    // suspend the espnow_send_task
-    vTaskSuspend(espnow_send_task_handle);
-    // ESP_LOGI(TAG, "suspend the fft task and espnow_send_task");
-    // confirm that adcTaskHandle is not NULL
-    assert(adcTaskHandle != NULL);
-    // // notify the adc task to stop capturing using interrupt
-    // vTaskNotifyGiveFromISR(adcTaskHandle, NULL);
-    // wait for the semaphore
-    // xSemaphoreTake(xSemaphore, portMAX_DELAY);
-    // wait for notification from the adc task
-    // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    // suspend adc task
-    // suspend_adc_capture_task();
-    // vTaskSuspend(adcTaskHandle);
-
-    // notify adc task to stop capturing using xTaskNotify
+    ESP_LOGI(TAG, "suspend the fft task");
+    // notify adc task to stop capturing
     xTaskNotifyGive(adcTaskHandle);
-    // wait for notification from the adc task
+    // wait for adc dsiabled confirmation from the adc task
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    ESP_LOGI(TAG, "notify the adc task to stop capturing");
+    ESP_LOGI(TAG, "confirmed adc task stopped");
 
     // allocate buffer for i2s read data
     uint8_t* i2s_write_buff = (uint8_t*) calloc(i2s_read_len, sizeof(char));
-
     // play an example audio file(file format: 8bit/16khz/single channel)
     ESP_LOGI(TAG, "playing crying soothing music: \n");
     int offset = 0;
@@ -111,33 +96,9 @@ void music_task(void* arg)
     }
     vTaskDelay(10 / portTICK_PERIOD_MS);
     example_reset_play_mode();
-    vTaskDelay(10 / portTICK_PERIOD_MS);
 
     // free buffer
     free(i2s_write_buff);
-    // give the semaphore
-    // xSemaphoreGive(xSemaphore);
-    // ESP_LOGI(TAG, "semaphore given");
-    // resume adc task
-    // resume_adc_capture_task();
-    // vTaskResume(adcTaskHandle);
-    // notify the adc task to start capturing using xTaskNotify
-    // xTaskNotify(adcTaskHandle, 1, eNoAction);
-    // ESP_LOGI(TAG, "notify the adc task");
-    // // wait for notification from the adc task
-    // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    // ESP_LOGI(TAG, "received notification from the adc task");
-    
-    // // notify the fft task to start capturing using xTaskNotify
-    // xTaskNotify(fftTaskHandle, 1, eNoAction);
-    // // resume the fft task
-    // vTaskResume(fftTaskHandle);
-    // ESP_LOGI(TAG, "notify the fft task");
-
-    // // resume the espnow_send_task
-    // vTaskResume(espnow_send_task_handle);
-    // ESP_LOGI(TAG, "resume the espnow_send_task");
-
     // notify adc task to start capturing using xTaskNotify
     xTaskNotifyGive(adcTaskHandle);
     // wait for notification from the adc task
@@ -145,14 +106,12 @@ void music_task(void* arg)
     ESP_LOGI(TAG, "received notification from the adc task");
     // notify the fft task to start capturing using xTaskNotify
     xTaskNotifyGive(fftTaskHandle);
+    // wait for notification from the fft task
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     // resume the fft task
     vTaskResume(fftTaskHandle);
-    // resume the espnow_send_task
-    vTaskResume(espnow_send_task_handle);
-    ESP_LOGI(TAG, "resume the espnow_send_task");
-    // delete the task
+    // return to the idle task
     vTaskDelete(NULL);
-    ESP_LOGI(TAG, "delete the music task");
 }
 
 esp_err_t init_music(TaskHandle_t fft_task_handle)
@@ -160,6 +119,8 @@ esp_err_t init_music(TaskHandle_t fft_task_handle)
     // set the log level for the i2s driver
     esp_log_level_set("I2S", ESP_LOG_INFO);
     // create task for music_task function and pass the fft task handle as a parameter
-    xTaskCreate(music_task, "music_task", 4096, (void*) fft_task_handle, 4, &music_play_task_handle);
+    xTaskCreatePinnedToCore(music_task, "music_task", 1024, (void*) fft_task_handle, IDLE_TASK_PRIO+1, &music_play_task_handle, 1);
+    configASSERT(music_play_task_handle);
+
     return ESP_OK;
 }

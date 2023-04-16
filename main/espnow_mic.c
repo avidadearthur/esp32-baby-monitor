@@ -2,16 +2,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include "espnow_mic.h"
+#include "music.h"
 #include "sd_record.h"
 
 
 static const char* TAG = "espnow_mic";
 StreamBufferHandle_t fft_stream_buf;
 StreamBufferHandle_t record_stream_buf;
-// extern SemaphoreHandle_t xSemaphore;
-extern TaskHandle_t espnow_send_task_handle;
-extern TaskHandle_t music_play_task_handle;
-extern TaskHandle_t fft_task_handle;
 
 uint8_t* mic_read_buf;
 uint8_t* spk_write_buf;
@@ -35,6 +32,13 @@ void resume_adc_capture_task()
     // ESP_LOGI(TAG, "adc capture task resumed\n");
 }
 
+// get the task handle of i2s_adc_capture_task
+TaskHandle_t get_adc_task_handle()
+{
+    assert(adcTaskHandle != NULL);
+    return adcTaskHandle;
+}
+
 
 // i2s adc capture task
 void i2s_adc_capture_task(void* task_param)
@@ -48,6 +52,10 @@ void i2s_adc_capture_task(void* task_param)
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
 
+    // get task handle of espnow_send_task
+    TaskHandle_t espnow_send_task_handle = xTaskGetHandle("espnow_send_task");
+    assert(espnow_send_task_handle != NULL);
+
     // enable i2s adc
     i2s_adc_enable(EXAMPLE_I2S_NUM);
     // // take the semaphore to enter critical section
@@ -56,62 +64,27 @@ void i2s_adc_capture_task(void* task_param)
 
     while(true){
 
-        // check if notification is received
-        if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10)) == pdPASS) {
-            // ESP_LOGI(TAG, "adc task notified to stop");
-            // // disable i2s adc
-            // i2s_adc_disable(EXAMPLE_I2S_NUM);
-            // ESP_LOGI(TAG, "adc disabled");
-            // // give semaphore
-            // xSemaphoreGive(xSemaphore);
-            // ESP_LOGI(TAG, "semaphore given");
-            // // check notification value to see if the task can be resumed
-            // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-            // ESP_LOGI(TAG, "adc task notified to resume");
-            // // flush the stream buffer
-            // xStreamBufferReset(mic_stream_buf);
-            // ESP_LOGI(TAG, "stream buffer cleared");
-            // // clear the read buffer
-            // memset(mic_read_buf, 0, READ_BUF_SIZE_BYTES);
-            // ESP_LOGI(TAG, "read buffer cleared");
-
-            // // clear the fft stream buffer
-            // #if FFT_TASK
-            // xStreamBufferReset(fft_stream_buf);
-            // ESP_LOGI(TAG, "fft stream buffer cleared");
-            // #endif
-
-            // // enable i2s adc
-            // i2s_adc_enable(EXAMPLE_I2S_NUM);
-            // ESP_LOGI(TAG, "adc enabled");
-            // // take the semaphore to enter critical section
-            // xSemaphoreTake(xSemaphore, portMAX_DELAY);
-            // ESP_LOGI(TAG, "semaphore taken");
-            // // notify music task to resume
-            // xTaskNotifyGive(music_play_task_handle);
-            // ESP_LOGI(TAG, "music task notified to resume");
-
+        // check if notification is received, if yes, clear the notification value on exit
+        if (ulTaskNotifyTake(pdTRUE, 0) == pdPASS) {
+            // get task handle of music_task
+            TaskHandle_t music_play_task_handle = get_music_play_task_handle();
+            assert(music_play_task_handle != NULL);
             // suspend espnow send task
-            // assert(espnow_send_task_handle != NULL);
-            // vTaskSuspend(espnow_send_task_handle);
+            assert(espnow_send_task_handle != NULL);
+            vTaskSuspend(espnow_send_task_handle);
             // disable i2s adc
             i2s_adc_disable(EXAMPLE_I2S_NUM);
-            // flush the stream buffer
-            // xStreamBufferReset(mic_stream_buf);
-            // clear the read buffer
-            // memset(mic_read_buf, 0, READ_BUF_SIZE_BYTES);
-            // clear the fft stream buffer
-            #if FFT_TASK
+            // clear the fft stream buffer to avoid retriggering music task
             xStreamBufferReset(fft_stream_buf);
-            #endif
-            // notify music task to resume playing
+            // notify music task to resume
             xTaskNotifyGive(music_play_task_handle);
+            
             // wait for notification to resume adc capture task
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
             // enable i2s adc
             i2s_adc_enable(EXAMPLE_I2S_NUM);
-            // // resume espnow send task
-            // vTaskResume(espnow_send_task_handle);
+            // resume espnow send task
+            vTaskResume(espnow_send_task_handle);
             // notify music task to resume finishing
             xTaskNotifyGive(music_play_task_handle);
 
@@ -234,8 +207,9 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
     record_stream_buf = record_audio_buf;
 
     // create the adc capture task and pin the task to core 0
-    xTaskCreatePinnedToCore(i2s_adc_capture_task, "i2s_adc_capture_task", 2048, (void*) mic_stream_buf, 4, NULL, 0);
-
+    xTaskCreatePinnedToCore(i2s_adc_capture_task, "i2s_adc_capture_task", 2048, (void*) mic_stream_buf, IDLE_TASK_PRIO, &adcTaskHandle, 0);
+    configASSERT(adcTaskHandle);
+    
     return ESP_OK;
 }
 
@@ -243,7 +217,7 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
 esp_err_t init_audio_recv(StreamBufferHandle_t network_stream_buf){ 
     ESP_LOGI(TAG,"initializing i2s spk\n");
     // /* thread for filling the buf for the reciever and dac */
-    xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 4096, (void*) network_stream_buf, 4, NULL);
+    xTaskCreate(i2s_dac_playback_task, "i2s_dac_playback_task", 2048, (void*) network_stream_buf, IDLE_TASK_PRIO, NULL);
 
     return ESP_OK;
 }

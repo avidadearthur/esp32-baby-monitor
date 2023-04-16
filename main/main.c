@@ -18,7 +18,6 @@ static StreamBufferHandle_t network_stream_buf; // only for reciever
 static StreamBufferHandle_t mic_stream_buf;
 static StreamBufferHandle_t fft_stream_buf;    // only for transmitter
 static StreamBufferHandle_t record_stream_buf; // only for transmitter
-// SemaphoreHandle_t xSemaphore = NULL;
 #endif
 
 #if (UI_CONNECTED)

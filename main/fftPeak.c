@@ -16,6 +16,12 @@
 static const char* TAG = "FFTPEAK";
 TaskHandle_t fft_task_handle = NULL;
 
+// get task handle of fft task
+TaskHandle_t get_fft_task_handle(){
+    assert(fft_task_handle != NULL);
+    return fft_task_handle;
+}
+
 
 void fft_task(void* task_param){
     // get the stream buffer handle from the task parameter
@@ -119,30 +125,36 @@ void fft_task(void* task_param){
         }
 
         // if peak is in range of 350-550 Hz, then it is a note
-        if ((freq1 > 370.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
+        if ((freq1 > 380.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
             ESP_LOGI(TAG, "note detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
             // db confirm if the baby is crying by calculating zcr
             bool is_cry = zcr(fft_analysis->input, N, fs);
             if(is_cry){
                 ESP_LOGI(TAG, "cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
-                // call the init_music functoin to play from existing audio file. reference: i2s_adc_dac example
+                // call the init_music functoin to play from existing audio file
                 init_music(fft_task_handle);
+                // get the music task handle
+                TaskHandle_t music_task_handle = get_music_play_task_handle();
                 // wait for the music task to finish
                 ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+                // notigy music task to resume
+                xTaskNotifyGive(music_task_handle);
                 ESP_LOGI(TAG, "resumed the fft task");
-                // check the status of the music task
+
+                // clear the buffers to avoid retriggering music player with the same signal fraction
+                memset(power, 0, (fft_analysis->size)/2+1);
+                memset(fft_input, 0, (fft_analysis->size)/2+1);
+                memset(fft_analysis->output, 0, (fft_analysis->size));
+                memset(fft_analysis->input, 0, (fft_analysis->size));
+
+                // if music task handle is not null, then delete the music task
+                if(music_task_handle != NULL){
+                    vTaskDelete(music_task_handle);
+                    music_task_handle = NULL;
+                }
             }
 
         }
-        // clear the power array
-        memset(power, 0, (fft_analysis->size)/2+1);
-        // clear the fft input array
-        memset(fft_input, 0, (fft_analysis->size)/2+1);
-        // clear the fft output array
-        memset(fft_analysis->output, 0, (fft_analysis->size));
-        // clear the fft input array
-        memset(fft_analysis->input, 0, (fft_analysis->size));
-
 
         #if(FFT_DEBUG)
             if ((count % (EXAMPLE_I2S_SAMPLE_RATE/N_SAMPLES) == 0) & (count > 3000)) {
@@ -169,7 +181,7 @@ void init_fft(StreamBufferHandle_t fft_audio_buf){
     // create a delay
     xTaskNotifyWait(0, 0, NULL, wait_ticks);
     // create a task to run the fft
-    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, 4, &fft_task_handle);
+    xTaskCreatePinnedToCore(fft_task, "fft_task", 2048, (void*) fft_audio_buf, IDLE_TASK_PRIO, &fft_task_handle, 1);
 }
 
 
