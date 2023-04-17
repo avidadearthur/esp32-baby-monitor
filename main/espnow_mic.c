@@ -55,9 +55,6 @@ void i2s_adc_capture_task(void* task_param)
 
     // enable i2s adc
     i2s_adc_enable(EXAMPLE_I2S_NUM);
-    // // take the semaphore to enter critical section
-    // xSemaphoreTake(xSemaphore, portMAX_DELAY);
-    // ESP_LOGI(TAG, "semaphore taken");
 
     while(true){
 
@@ -141,8 +138,6 @@ void i2s_adc_capture_task(void* task_param)
     // disable i2s adc
     i2s_adc_disable(EXAMPLE_I2S_NUM);
     ESP_LOGI(TAG, "i2s adc disabled\n");
-    // delete semaphore
-    // vSemaphoreDelete(xSemaphore);
     free(mic_read_buf);
     vTaskDelete(NULL);
     
