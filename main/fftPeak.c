@@ -148,10 +148,13 @@ void fft_task(void* task_param){
                 memset(fft_analysis->input, 0, (fft_analysis->size));
 
                 // if music task handle is not null, then delete the music task
-                if(music_task_handle != NULL){
+                if((music_task_handle = get_music_play_task_handle()) != NULL){
                     vTaskDelete(music_task_handle);
-                    music_task_handle = NULL;
                     ESP_LOGI(TAG, "deleted the music task");
+                    // get the music task status
+                    eTaskState music_task_status = eTaskGetState(music_task_handle);
+                    ESP_LOGI(TAG, "music task status: %d. 0 means running, 4 means in the delete queue but not yet deleted, 5 means invalid\n", music_task_status);
+                    music_task_handle = NULL;
                 }
             }
 
