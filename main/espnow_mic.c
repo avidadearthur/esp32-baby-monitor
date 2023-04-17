@@ -4,6 +4,7 @@
 #include "espnow_mic.h"
 #include "music.h"
 #include "sd_record.h"
+#include "espnow_send.h"
 
 
 static const char* TAG = "espnow_mic";
@@ -52,10 +53,6 @@ void i2s_adc_capture_task(void* task_param)
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
     TickType_t ticks_to_wait = 100; // wait 100 ticks for the mic_stream_buf to be available
 
-    // get task handle of espnow_send_task
-    TaskHandle_t espnow_send_task_handle = xTaskGetHandle("espnow_send_task");
-    assert(espnow_send_task_handle != NULL);
-
     // enable i2s adc
     i2s_adc_enable(EXAMPLE_I2S_NUM);
     // // take the semaphore to enter critical section
@@ -70,6 +67,8 @@ void i2s_adc_capture_task(void* task_param)
             TaskHandle_t music_play_task_handle = get_music_play_task_handle();
             assert(music_play_task_handle != NULL);
             // suspend espnow send task
+            // get task handle of espnow_send_task
+            TaskHandle_t espnow_send_task_handle = get_espnow_send_task_handle();
             assert(espnow_send_task_handle != NULL);
             vTaskSuspend(espnow_send_task_handle);
             // disable i2s adc
@@ -207,7 +206,7 @@ esp_err_t init_audio_trans(StreamBufferHandle_t mic_stream_buf, StreamBufferHand
     record_stream_buf = record_audio_buf;
 
     // create the adc capture task and pin the task to core 0
-    xTaskCreatePinnedToCore(i2s_adc_capture_task, "i2s_adc_capture_task", 2048, (void*) mic_stream_buf, IDLE_TASK_PRIO, &adcTaskHandle, 0);
+    xTaskCreate(i2s_adc_capture_task, "i2s_adc_capture_task", 4096, (void*) mic_stream_buf, IDLE_TASK_PRIO, &adcTaskHandle);
     configASSERT(adcTaskHandle);
     
     return ESP_OK;

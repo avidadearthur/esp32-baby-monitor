@@ -105,11 +105,11 @@ void music_task(void* task_param)
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     ESP_LOGI(TAG, "received notification from the adc task");
     // notify the fft task to start capturing using xTaskNotify
+    // resume the fft task
+    vTaskResume(fftTaskHandle);
     xTaskNotifyGive(fftTaskHandle);
     // wait for notification from the fft task
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    // resume the fft task
-    vTaskResume(fftTaskHandle);
     // return to the idle task
     vTaskDelete(NULL);
 }
@@ -119,7 +119,7 @@ esp_err_t init_music(TaskHandle_t fft_task_handle)
     // set the log level for the i2s driver
     esp_log_level_set("I2S", ESP_LOG_INFO);
     // create task for music_task function and pass the fft task handle as a parameter
-    xTaskCreatePinnedToCore(music_task, "music_task", 1024, (void*) fft_task_handle, IDLE_TASK_PRIO+1, &music_play_task_handle, 1);
+    xTaskCreate(music_task, "music_task", 2048, (void*) fft_task_handle, IDLE_TASK_PRIO+1, &music_play_task_handle);
     configASSERT(music_play_task_handle);
 
     return ESP_OK;

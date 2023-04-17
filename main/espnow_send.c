@@ -14,6 +14,13 @@ static uint8_t esp_now_send_buf[ESPNOW_MAX_SEND_BYTE];
 
 TaskHandle_t espnow_send_task_handle = NULL;
 
+// get the task handle of espnow_send_task
+TaskHandle_t get_espnow_send_task_handle()
+{
+    assert(espnow_send_task_handle != NULL);
+    return espnow_send_task_handle;
+}
+
 /* sender task definition */
 void espnow_send_task(void* task_param) {
 
@@ -29,12 +36,6 @@ void espnow_send_task(void* task_param) {
     #endif
 
     while (true) {
-        // if the stream buffer is empty, wait for the data
-        while(xStreamBufferIsEmpty(mic_stream_buf) == pdTRUE){
-            // delay 1s
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-        }
-
         // read from the mic stream buffer until it is empty
         size_t num_bytes = xStreamBufferReceive(mic_stream_buf, esp_now_send_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
         if (num_bytes > 0 ) {
@@ -68,7 +69,7 @@ void espnow_send_task(void* task_param) {
 /* sender initialization */
 void init_transmit(StreamBufferHandle_t mic_stream_buf){
     ESP_LOGI(TAG,"Init transport!\n");
-    xTaskCreatePinnedToCore(espnow_send_task, "espnow_send_task", 1024, (void*) mic_stream_buf, IDLE_TASK_PRIO, &espnow_send_task_handle, 0);
+    xTaskCreate(espnow_send_task, "espnow_send_task", 1024, (void*) mic_stream_buf, IDLE_TASK_PRIO, &espnow_send_task_handle);
     // confirm that the task is created
     configASSERT(espnow_send_task_handle);
 

@@ -151,6 +151,7 @@ void fft_task(void* task_param){
                 if(music_task_handle != NULL){
                     vTaskDelete(music_task_handle);
                     music_task_handle = NULL;
+                    ESP_LOGI(TAG, "deleted the music task");
                 }
             }
 
@@ -181,7 +182,7 @@ void init_fft(StreamBufferHandle_t fft_audio_buf){
     // create a delay
     xTaskNotifyWait(0, 0, NULL, wait_ticks);
     // create a task to run the fft
-    xTaskCreatePinnedToCore(fft_task, "fft_task", 2048, (void*) fft_audio_buf, IDLE_TASK_PRIO, &fft_task_handle, 1);
+    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, IDLE_TASK_PRIO, &fft_task_handle);
 }
 
 

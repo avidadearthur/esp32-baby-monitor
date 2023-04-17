@@ -82,10 +82,6 @@ void app_main(void)
     init_config();
 
 #if (!RECV)
-    // // Create semaphore
-    // xSemaphore = xSemaphoreCreateBinary();
-    // xSemaphoreGive(xSemaphore);
-    // initialize the transmitter and audio
     init_transmit(mic_stream_buf);
     init_audio_trans(mic_stream_buf, fft_stream_buf, record_stream_buf);
 #if (!RECV) & (FFT_TASK)

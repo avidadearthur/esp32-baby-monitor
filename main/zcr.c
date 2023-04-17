@@ -25,8 +25,8 @@ bool zcr(float* data, int N, int fs){
 	// calculate the zero crossed rate by dividing the zero crossed count by the total number of samples
 	zcr = (float)zcrcount/(float)N;
 	ESP_LOGI(TAG, "zero crossing rate: %f \n", zcr);
-	// if zcr is greater than 0.07, then cry sound is detected
-	if (zcr > 0.080)
+	// if zcr is greater than 0.08, then cry sound is detected (thoeretically is 0.01, yet a lower threshold is used to avoid false negatives)
+	if (zcr > 0.085)
 	{
 		return true;
 	}
