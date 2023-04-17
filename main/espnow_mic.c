@@ -47,7 +47,9 @@ void i2s_adc_capture_task(void* task_param)
     // get the stream buffer handle from the task parameter
     StreamBufferHandle_t mic_stream_buf = (StreamBufferHandle_t) task_param;
 
-    mic_read_buf = calloc(READ_BUF_SIZE_BYTES,sizeof(char));
+    // int read_len = EXAMPLE_I2S_READ_LEN/2;
+    int read_len = (EXAMPLE_I2S_READ_LEN/2) * sizeof(char);
+    mic_read_buf = calloc(EXAMPLE_I2S_READ_LEN,sizeof(char));
 
     // enable i2s adc
     size_t bytes_read = 0; // to count the number of bytes read from the i2s adc
@@ -86,14 +88,14 @@ void i2s_adc_capture_task(void* task_param)
 
         }else{       
             // read from i2s bus and use errno to check if i2s_read is successful
-            if (i2s_read(EXAMPLE_I2S_NUM, (char*)mic_read_buf, READ_BUF_SIZE_BYTES, &bytes_read, ticks_to_wait) != ESP_OK) {
+            if (i2s_read(EXAMPLE_I2S_NUM, (char*)mic_read_buf, read_len, &bytes_read, ticks_to_wait) != ESP_OK) {
                 ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
                 deinit_config();
                 exit(errno);
             }
 
             // check if the number of bytes read is equal to the number of bytes to read
-            if (bytes_read != READ_BUF_SIZE_BYTES) {
+            if (bytes_read != read_len) {
                 ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
                 deinit_config();
                 exit(errno);
@@ -112,25 +114,25 @@ void i2s_adc_capture_task(void* task_param)
             #endif
 
             // scale the data to 8 bit
-            i2s_adc_data_scale(mic_read_buf, mic_read_buf, READ_BUF_SIZE_BYTES);
+            i2s_adc_data_scale(mic_read_buf, mic_read_buf, read_len);
 
             /**
              * xstreambuffersend is a blocking function that sends data to the stream buffer,
              * esp_now_send needs to send 128 packets of 250 bytes each, so the stream buffer needs to be able to hold at least 2-3 times of 128 * 250 bytes = BYTE_RATE bytes
              * */ 
-            size_t espnow_byte = xStreamBufferSend(mic_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
-            if (espnow_byte != READ_BUF_SIZE_BYTES) {
-                ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", espnow_byte, READ_BUF_SIZE_BYTES);
+            size_t espnow_byte = xStreamBufferSend(mic_stream_buf,(void*) mic_read_buf, read_len, portMAX_DELAY);
+            if (espnow_byte != read_len) {
+                ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", espnow_byte, read_len);
             }
 
             /**
              * xstreambuffersend to sd record task
             */
             #if RECORD_TASK
-            size_t record_byte = xStreamBufferSend(record_stream_buf,(void*) mic_read_buf, READ_BUF_SIZE_BYTES, portMAX_DELAY);
+            size_t record_byte = xStreamBufferSend(record_stream_buf,(void*) mic_read_buf, read_len, portMAX_DELAY);
             // check if bytes sent is equal to bytes read
-            if (record_byte != READ_BUF_SIZE_BYTES) {
-                ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", record_byte, READ_BUF_SIZE_BYTES);
+            if (record_byte != read_len) {
+                ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", record_byte, read_len);
             }
             #endif
         }
@@ -167,7 +169,7 @@ void i2s_dac_playback_task(void* task_param) {
     StreamBufferHandle_t spk_stream_buf = (StreamBufferHandle_t)task_param;
 
     size_t bytes_written = 0;
-    spk_write_buf = (uint8_t*) calloc(BYTE_RATE,sizeof(char));
+    spk_write_buf = (uint8_t*) calloc(BYTE_RATE, sizeof(char));
     assert(spk_write_buf != NULL);
 
     while (true) {

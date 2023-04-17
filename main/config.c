@@ -93,9 +93,9 @@ void i2s_adc_dac_config(void)
     // init DAC pad (GPIO25 & GPIO26) & mode
     i2s_set_pin(i2s_num, NULL);
     // set i2s clock source for i2s spk
-    i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, I2S_CHANNEL_FMT_RIGHT_LEFT);
+    i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, 1);
     // set i2s sample rate for respective dac channel of i2s spk (clock source is set automatically by the function)
-    i2s_set_sample_rates(i2s_num, EXAMPLE_I2S_SAMPLE_RATE / 2);
+    i2s_set_sample_rates(i2s_num, EXAMPLE_I2S_SAMPLE_RATE);
 #endif
 }
 

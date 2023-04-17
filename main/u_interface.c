@@ -421,7 +421,7 @@ void init_u_interface(StreamBufferHandle_t xStream)
     xTaskCreate(datetime_task, "datetime_task", 2048, NULL, 5, NULL);
 
     // Create home task and suspend it
-    xTaskCreate(home_task, "home_task", 2048, NULL, 2, &home_task_handle);
+    xTaskCreate(home_task, "home_task", 3072, NULL, 2, &home_task_handle);
     vTaskSuspend(home_task_handle);
 
     // Initialize semaphore
