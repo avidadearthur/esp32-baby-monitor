@@ -80,7 +80,7 @@ void i2s_adc_dac_config(void)
     i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
     // init ADC pad
     i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
-    // init DAC pad
+    // // init DAC pad
     i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN);
     // set i2s clock source for i2s mic
     i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE * 1.25, EXAMPLE_I2S_SAMPLE_BITS, EXAMPLE_I2S_CHANNEL_NUM);
@@ -93,9 +93,9 @@ void i2s_adc_dac_config(void)
     // init DAC pad (GPIO25 & GPIO26) & mode
     i2s_set_pin(i2s_num, NULL);
     // set i2s clock source for i2s spk
-    i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, I2S_CHANNEL_FMT_RIGHT_LEFT);
+    i2s_set_clk(i2s_num, EXAMPLE_I2S_SAMPLE_RATE, EXAMPLE_I2S_SAMPLE_BITS, 1);
     // set i2s sample rate for respective dac channel of i2s spk (clock source is set automatically by the function)
-    i2s_set_sample_rates(i2s_num, EXAMPLE_I2S_SAMPLE_RATE / 2);
+    i2s_set_sample_rates(i2s_num, EXAMPLE_I2S_SAMPLE_RATE);
 #endif
 }
 

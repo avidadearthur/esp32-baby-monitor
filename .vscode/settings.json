@@ -1,6 +1,6 @@
 {
   "C_Cpp.intelliSenseEngine": "Tag Parser",
-  "idf.port": "/dev/cu.SLAB_USBtoUART",
+  "idf.port": "/dev/cu.SLAB_USBtoUART5",
   "idf.espIdfPath": "/Users/jeffeehsiung/esp/esp-idf",
   "idf.toolsPath": "/Users/jeffeehsiung/.espressif",
   "idf.flashType": "UART",
@@ -28,6 +28,7 @@
     "regex": "c",
     "utility": "c",
     "audio_example_file.h": "c",
+    "string": "c"
   },
   "idf.portWin": "COM6"
 }

@@ -12,10 +12,15 @@
 #define FREQ_STEP (EXAMPLE_I2S_SAMPLE_RATE / N_SAMPLES)
 
 #define FFT_DEBUG 0
-#define FFT_ESP_DSP 0
 
 static const char* TAG = "FFTPEAK";
 TaskHandle_t fft_task_handle = NULL;
+
+// get task handle of fft task
+TaskHandle_t get_fft_task_handle(){
+    assert(fft_task_handle != NULL);
+    return fft_task_handle;
+}
 
 
 void fft_task(void* task_param){
@@ -52,7 +57,7 @@ void fft_task(void* task_param){
 
 
     // create a buffer of size N to hold the fft input signal
-    uint8_t* fft_input = calloc(N, sizeof(uint8_t));
+    uint8_t* fft_input = calloc(N, sizeof(char));
     // check if fft_input is allocated
     if (fft_input == NULL){
         ESP_LOGE(TAG, "fft_input is NULL");
@@ -120,23 +125,60 @@ void fft_task(void* task_param){
         }
 
         // if peak is in range of 350-550 Hz, then it is a note
-        if ((freq1 > 370.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
+        if ((freq1 > 355.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
             ESP_LOGI(TAG, "note detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
+            // if amplitude of frequency 1 is greater than 0.06, then cry score + 1
+            int cry_score = 0;
+            if (max1 > 0.03){
+                cry_score++;
+            }
+            // // if amplitude of frequency 2 is greater than 0.06, then cry score + 1
+            if (max2 > 0.01){
+                cry_score++;
+            }
             // db confirm if the baby is crying by calculating zcr
             bool is_cry = zcr(fft_analysis->input, N, fs);
-            if(is_cry){
+
+            // // if zcr is true, then cry score + 1
+            if (is_cry){
+                cry_score++;
+            }
+            // // if cry score is greater than 2 and zcr confirms that the baby is crying, then play music
+            ESP_LOGI(TAG, "cry score is %d", cry_score);
+
+            if(cry_score == 3){
                 ESP_LOGI(TAG, "cry detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
-                // call the init_music functoin to play from existing audio file. reference: i2s_adc_dac example
+                // call the init_music functoin to play from existing audio file
                 init_music(fft_task_handle);
+                // get the music task handle
+                TaskHandle_t music_task_handle = get_music_play_task_handle();
                 // wait for the music task to finish
                 ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+                // notigy music task to resume
+                xTaskNotifyGive(music_task_handle);
                 ESP_LOGI(TAG, "resumed the fft task");
+
+                // clear the buffers to avoid retriggering music player with the same signal fraction
+                memset(power, 0, (fft_analysis->size)/2+1);
+                memset(fft_input, 0, (fft_analysis->size)/2+1);
+                memset(fft_analysis->output, 0, (fft_analysis->size));
+                memset(fft_analysis->input, 0, (fft_analysis->size));
+
+                // if music task handle is not null, then delete the music task
+                if((music_task_handle = get_music_play_task_handle()) != NULL){
+                    vTaskDelete(music_task_handle);
+                    ESP_LOGI(TAG, "deleted the music task");
+                    // get the music task status
+                    eTaskState music_task_status = eTaskGetState(music_task_handle);
+                    ESP_LOGI(TAG, "music task status: %d. 0 means running, 4 means in the delete queue but not yet deleted, 5 means invalid\n", music_task_status);
+                    music_task_handle = NULL;
+                }
             }
 
         }
 
         #if(FFT_DEBUG)
-            if ((count % (EXAMPLE_I2S_SAMPLE_RATE/N_SAMPLES) == 0) & (count > 30)) {
+            if ((count % (EXAMPLE_I2S_SAMPLE_RATE/N_SAMPLES) == 0) & (count > 3000)) {
                 ESP_LOGI(TAG, "peak 1 at frequency %lf Hz with amplitude %lf \n", freq1, max1);
                 ESP_LOGI(TAG, "peak 2 at frequency %lf Hz with amplitude %lf \n", freq2, max2);
                 count = 0;
@@ -160,7 +202,7 @@ void init_fft(StreamBufferHandle_t fft_audio_buf){
     // create a delay
     xTaskNotifyWait(0, 0, NULL, wait_ticks);
     // create a task to run the fft
-    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, 4, &fft_task_handle);
+    xTaskCreate(fft_task, "fft_task", 4096, (void*) fft_audio_buf, IDLE_TASK_PRIO, &fft_task_handle);
 }
 
 

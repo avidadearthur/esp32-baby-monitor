@@ -65,6 +65,9 @@
 // i2s mic and adc settings
 #define V_REF 1100
 
+// define idle task priority
+#define IDLE_TASK_PRIO (5)
+
 // i2s number for interface channel
 #define EXAMPLE_I2S_NUM (0)
 // i2s sample rate
