@@ -297,16 +297,16 @@ void datetime_task(void *pvParameter)
     char strftime_buf[64];
 
     // Wait for the time to be synchronized
-    while (timeinfo.tm_year < (2020 - 1900))
-    {
-        ESP_LOGI(TAG, "Sync ntptime...");
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        time(&now);
-        localtime_r(&now, &timeinfo);
-        // copy "Sync ntptime..." into strftime_buf
-        strcpy(strftime_buf, "Sync ntptime...");
-        xQueueSend(log_queue, &strftime_buf, portMAX_DELAY);
-    }
+    // while (timeinfo.tm_year < (2020 - 1900))
+    // {
+    //     ESP_LOGI(TAG, "Sync ntptime...");
+    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //     time(&now);
+    //     localtime_r(&now, &timeinfo);
+    //     // copy "Sync ntptime..." into strftime_buf
+    //     strcpy(strftime_buf, "Sync ntptime...");
+    //     xQueueSend(log_queue, &strftime_buf, portMAX_DELAY);
+    // }
 
     while (1)
     {

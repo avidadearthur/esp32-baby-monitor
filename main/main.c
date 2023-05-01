@@ -8,7 +8,6 @@
 #include "sd_record.h"
 #include "u_interface.h"
 #include "nrf24.h"
-#include "wifi_station.h"
 
 static const char *TAG = "main.c";
 
