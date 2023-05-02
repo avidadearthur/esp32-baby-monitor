@@ -17,6 +17,7 @@ static StreamBufferHandle_t network_stream_buf; // only for reciever
 static StreamBufferHandle_t mic_stream_buf;
 static StreamBufferHandle_t fft_stream_buf;    // only for transmitter
 static StreamBufferHandle_t record_stream_buf; // only for transmitter
+static StreamBufferHandle_t freq_stream_buf;   // only for transmitter
 #endif
 
 #if (UI_CONNECTED)
@@ -51,8 +52,9 @@ void app_main(void)
 #endif
 #if (!RECV) & (FFT_TASK) & (RECORD_TASK)
     record_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN, 1);
+    freq_stream_buf = xStreamBufferCreate(EXAMPLE_I2S_READ_LEN/16, 1);
     // check if the stream buffer is created
-    if (record_stream_buf == NULL)
+    if (record_stream_buf == NULL || freq_stream_buf == NULL)
     {
         printf("Error creating record stream buffer: %d\n", errno);
         deinit_config();
@@ -84,10 +86,10 @@ void app_main(void)
     init_transmit(mic_stream_buf);
     init_audio_trans(mic_stream_buf, fft_stream_buf, record_stream_buf);
 #if (!RECV) & (FFT_TASK)
-    init_fft(fft_stream_buf);
+    init_fft(fft_stream_buf, freq_stream_buf);
 #endif
 #if (!RECV) & (FFT_TASK) & (RECORD_TASK)
-    init_recording(record_stream_buf);
+    init_recording(record_stream_buf, freq_stream_buf);
 #endif
 #endif
 

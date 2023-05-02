@@ -12,6 +12,6 @@
 #include "soc/uart_struct.h"
 #include <math.h>
 
-void init_fft(StreamBufferHandle_t fft_stream_buf);
+void init_fft(StreamBufferHandle_t fft_stream_buf, StreamBufferHandle_t freq_stream_buf);
 
 #endif
