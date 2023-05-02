@@ -34,8 +34,6 @@ void fft_task(void* task_param){
     // Create fft plan config and let it allocate input and output arrays
     fft_analysis = fft_init(N, FFT_REAL, FFT_FORWARD, NULL, NULL);
 
-
-
     // calculate frequencies for each bin in spectrum 
     float freqs[((fft_analysis->size)/2)+1];
     for (int i = 0; i <= ((fft_analysis->size)/2); i++) {
@@ -126,6 +124,7 @@ void fft_task(void* task_param){
 
         // if peak is in range of 350-550 Hz, then it is a note
         if ((freq1 > 355.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
+
             ESP_LOGI(TAG, "note detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
             // if amplitude of frequency 1 is greater than 0.06, then cry score + 1
             int cry_score = 0;
