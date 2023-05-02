@@ -30,5 +30,8 @@
     "audio_example_file.h": "c",
     "string": "c"
   },
-  "idf.portWin": "COM6"
+  "idf.portWin": "COM6",
+  "idf.openOcdConfigs": [
+    "board/esp32-wrover-kit-3.3v.cfg"
+  ]
 }

@@ -44,7 +44,7 @@
 #define RECV 0
 #define UI_CONNECTED 0
 #define FFT_TASK 1
-#define RECORD_TASK 0
+#define RECORD_TASK 1
 
 /** wifi configuration */
 /* ESPNOW can work in both station and softap mode. It is configured in menuconfig. */
