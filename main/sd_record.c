@@ -8,8 +8,7 @@ sdmmc_card_t *card;
 const int WAVE_HEADER_SIZE = 44;
 static const char *TAG = "sdRecording.c";
 
-uint8_t* audio_output_buf;
-
+uint8_t *audio_output_buf;
 
 /**
  * @brief Initializes the slot without card detect (CD) and write protect (WP) signals.
@@ -97,7 +96,8 @@ void generate_wav_header(char *wav_header, uint32_t wav_size, uint32_t sample_ra
     memcpy(wav_header, set_wav_header, sizeof(set_wav_header));
 }
 
-void rec_and_read_task(void* task_param) {
+void rec_and_read_task(void *task_param)
+{
     /** -------------------------------------------------------*/
     mount_sdcard();
     // Use POSIX and C standard library functions to work with files.
@@ -125,25 +125,44 @@ void rec_and_read_task(void* task_param) {
     fwrite(wav_header_fmt, 1, WAVE_HEADER_SIZE, f);
     /** -------------------------------------------------------*/
 
-    StreamBufferHandle_t net_stream_buf = (StreamBufferHandle_t)task_param;
+    // Create test .csv file
+    FILE *csv = fopen(SD_MOUNT_POINT "/test.csv", "a");
+    if (csv == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open file for writing");
+        vTaskDelete(NULL);
+    }
+
+    StreamBufferHandle_t rec_stream_buf = (StreamBufferHandle_t)task_param;
 
     // allocate memory for the read buffer
-    audio_output_buf = (uint8_t*) calloc(BYTE_RATE, sizeof(char));
+    audio_output_buf = (uint8_t *)calloc(BYTE_RATE / 2, sizeof(char));
+    // check if memory allocation was successful
+    if (audio_output_buf == NULL)
+    {
+        ESP_LOGE(TAG, "Error allocating memory for audio output buffer");
+        vTaskDelete(NULL);
+    }
 
-    while (flash_wr_size < flash_rec_size) {
-        size_t num_bytes = xStreamBufferReceive(net_stream_buf, (void*)audio_output_buf,sizeof(audio_output_buf), portMAX_DELAY);
-        if (num_bytes > 0) {
-            ESP_LOGI(TAG, "Read %d bytes from net_stream_buf", num_bytes);
+    while (flash_wr_size < flash_rec_size)
+    {
+        size_t num_bytes = xStreamBufferReceive(rec_stream_buf, (char *)audio_output_buf, BYTE_RATE / 4, portMAX_DELAY);
+        if (num_bytes > 0)
+        {
+            ESP_LOGI(TAG, "Read %d bytes from rec_stream_buf", num_bytes);
             fwrite(audio_output_buf, 1, num_bytes, f);
+            fwrite(audio_output_buf, 1, num_bytes, csv);
             flash_wr_size += num_bytes;
             ESP_LOGI(TAG, "Wrote %d/%ld bytes to file - %ld%%", flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
         }
-        else {
-            ESP_LOGE(TAG, "Error reading %d bytes from net_stream_buf", num_bytes);
+        else
+        {
+            ESP_LOGE(TAG, "Error reading %d bytes from rec_stream_buf", num_bytes);
         }
     }
     ESP_LOGI(TAG, "Recording done!");
     fclose(f);
+    fclose(csv);
     ESP_LOGI(TAG, "File written on SDCard");
 
     // All done, unmount partition and disable SPI peripheral
@@ -158,6 +177,13 @@ void rec_and_read_task(void* task_param) {
 void init_recording(StreamBufferHandle_t xStreamBufferRec)
 {
     ESP_LOGI(TAG, "Starting recording task");
-
-    xTaskCreate(rec_and_read_task, "rec_and_read_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferRec, 5, NULL);
+    // check if xStreamBufferRec is null
+    if (xStreamBufferRec == NULL)
+    {
+        ESP_LOGE(TAG, "sd_record.c - Error receiving xStreamBufferRec");
+    }
+    else
+    {
+        xTaskCreate(rec_and_read_task, "rec_and_read_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferRec, IDLE_TASK_PRIO + 1, NULL);
+    }
 }

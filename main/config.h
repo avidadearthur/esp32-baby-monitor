@@ -41,10 +41,10 @@
 #include "../components/esp32-smbus/smbus.h"
 #include "../components/esp32-i2c-lcd1602/i2c-lcd1602.h"
 
-#define RECV 1
-#define UI_CONNECTED 1
-#define FFT_TASK 0
-#define RECORD_TASK 0
+#define RECV 0
+#define UI_CONNECTED 0
+#define FFT_TASK 1
+#define RECORD_TASK 1
 
 /** wifi configuration */
 /* ESPNOW can work in both station and softap mode. It is configured in menuconfig. */
