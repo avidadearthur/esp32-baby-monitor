@@ -1,6 +1,6 @@
 {
   "C_Cpp.intelliSenseEngine": "Tag Parser",
-  "idf.port": "/dev/cu.SLAB_USBtoUART5",
+  "idf.port": "/dev/cu.SLAB_USBtoUART",
   "idf.espIdfPath": "/Users/jeffeehsiung/esp/esp-idf",
   "idf.toolsPath": "/Users/jeffeehsiung/.espressif",
   "idf.flashType": "UART",

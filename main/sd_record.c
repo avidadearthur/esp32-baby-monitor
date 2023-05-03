@@ -10,6 +10,8 @@ static const char *TAG = "sdRecording.c";
 
 uint8_t *audio_output_buf;
 
+StreamBufferHandle_t freq_stream_data;
+
 // for the rec button
 // for the rec button
 #define REC_BUTTON_GPIO 34
@@ -153,7 +155,10 @@ void rec_and_read_task(void *task_param)
     /** -------------------------------------------------------*/
 
     // Create test .csv file
-    FILE *csv = fopen(SD_MOUNT_POINT "/test.csv", "a");
+    FILE *csv = fopen(SD_MOUNT_POINT "/test.csv", "w+");
+    // write the header column names into the csv file
+    fprintf(csv, "freq1,max1,freq2,max2\n");
+
     if (csv == NULL)
     {
         ESP_LOGE(TAG, "Failed to open file for writing");
@@ -170,19 +175,24 @@ void rec_and_read_task(void *task_param)
         ESP_LOGE(TAG, "Error allocating memory for audio output buffer");
         vTaskDelete(NULL);
     }
-
-    // check the stack high watermark before writing to the stream buffer
-    UBaseType_t stack_high_watermark = uxTaskGetStackHighWaterMark(NULL);
-    ESP_LOGI(TAG, "Stack high watermark before writing to audio buffer: %d", stack_high_watermark);
+    float *freq_output_buf = (float *)calloc(4, sizeof(float));
+    // check if memory allocation was successful
+    if (freq_output_buf == NULL)
+    {
+        ESP_LOGE(TAG, "Error allocating memory for freq output buffer");
+        vTaskDelete(NULL);
+    }
 
     while (flash_wr_size < flash_rec_size)
     {
         size_t num_bytes = xStreamBufferReceive(rec_stream_buf, (char *)audio_output_buf, BYTE_RATE / 4, portMAX_DELAY);
+        size_t peak_data = xStreamBufferReceive(freq_stream_data, (float *)freq_output_buf, 4 * sizeof(float), portMAX_DELAY);
         if (num_bytes > 0)
         {
             ESP_LOGI(TAG, "Read %d bytes from rec_stream_buf", num_bytes);
             fwrite(audio_output_buf, 1, num_bytes, f);
-            // fwrite(audio_output_buf, 1, num_bytes, csv);
+            // write the frequency data float array to the csv file and seperate by commas
+            fprintf(csv, "%f,%f,%f,%f\n", freq_output_buf[0], freq_output_buf[1], freq_output_buf[2], freq_output_buf[3]);
             flash_wr_size += num_bytes;
             ESP_LOGI(TAG, "Wrote %d/%ld bytes to file - %ld%%", flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
             // check stack high watermark after writing to the stream buffer
@@ -208,7 +218,7 @@ void rec_and_read_task(void *task_param)
     vTaskDelete(NULL);
 }
 
-void init_recording(StreamBufferHandle_t xStreamBufferRec)
+void init_recording(StreamBufferHandle_t xStreamBufferRec, StreamBufferHandle_t xStreamBufferFreq)
 {
     ESP_LOGI(TAG, "Starting recording task");
     // Initialize semaphore
@@ -236,12 +246,13 @@ void init_recording(StreamBufferHandle_t xStreamBufferRec)
     // xSemaphoreGive(xSemaphore);
 
     // check if xStreamBufferRec is null
-    if (xStreamBufferRec == NULL)
+    if (xStreamBufferRec == NULL || xStreamBufferFreq == NULL)
     {
         ESP_LOGE(TAG, "sd_record.c - Error receiving xStreamBufferRec");
     }
     else
     {
-        xTaskCreate(rec_and_read_task, "rec_and_read_task", 4096, xStreamBufferRec, IDLE_TASK_PRIO, NULL);
+        freq_stream_data = xStreamBufferFreq;
+        xTaskCreate(rec_and_read_task, "rec_and_read_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferRec, IDLE_TASK_PRIO, NULL);
     }
 }

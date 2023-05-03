@@ -14,6 +14,7 @@
 
 static const char *TAG = "FFTPEAK";
 TaskHandle_t fft_task_handle = NULL;
+StreamBufferHandle_t freq_stream_buf;
 
 // get task handle of fft task
 TaskHandle_t get_fft_task_handle()
@@ -75,6 +76,7 @@ void fft_task(void *task_param)
     // declare a counter to count until processed sample == sample rate
     int count = 0;
 #endif
+
     ESP_LOGI(TAG, "FFT task started \n");
     // when there is data available in the stream buffer, read it and execute fft
     while (true)
@@ -135,10 +137,21 @@ void fft_task(void *task_param)
                 }
             }
         }
+        
+        #if (RECORD_TASK)
+        // define a buffer to store frequency and max amplitude
+            float* freq_buffer = calloc(4, sizeof(float));
+            freq_buffer[0] = freq1;
+            freq_buffer[1] = max1;
+            freq_buffer[2] = freq2;
+            freq_buffer[3] = max2;
+            // 4 * sizeof(float) = 4 * 4 = 16 bytes
+            xStreamBufferSend(freq_stream_buf, freq_buffer, 4*sizeof(float), portMAX_DELAY);
+        #endif
 
         // if peak is in range of 350-550 Hz, then it is a note
-        if ((freq1 > 355.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0))
-        {
+        if ((freq1 > 355.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
+
             ESP_LOGI(TAG, "note detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
             // if amplitude of frequency 1 is greater than 0.06, then cry score + 1
             int cry_score = 0;
@@ -214,12 +227,15 @@ void fft_task(void *task_param)
     vTaskDelete(NULL);
 }
 
-void init_fft(StreamBufferHandle_t fft_audio_buf)
+void init_fft(StreamBufferHandle_t fft_audio_buf, StreamBufferHandle_t freq_audio_buf)
 {
     // ticks to wait for filling fft to complete
     TickType_t wait_ticks = pdMS_TO_TICKS(1000);
     // create a delay
     xTaskNotifyWait(0, 0, NULL, wait_ticks);
+#if (RECORD_TASK)
+    freq_stream_buf = freq_audio_buf;
+#endif
     // create a task to run the fft
     xTaskCreate(fft_task, "fft_task", 4096, (void *)fft_audio_buf, IDLE_TASK_PRIO, &fft_task_handle);
 }
