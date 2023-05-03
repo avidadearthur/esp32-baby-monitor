@@ -10,6 +10,33 @@ static const char *TAG = "sdRecording.c";
 
 uint8_t *audio_output_buf;
 
+// for the rec button
+// for the rec button
+#define REC_BUTTON_GPIO 34
+#define BUTTON_DEBOUNCE_TIME_MS 300
+
+// SemaphoreHandle_t xSemaphore;
+
+bool interrupt_flag = false;
+uint32_t last_button_isr_time = 0;
+
+void IRAM_ATTR rec_button_isr_handler(void *arg)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdTRUE;
+    uint32_t isr_time = xTaskGetTickCountFromISR();
+
+    if ((isr_time - last_button_isr_time) > pdMS_TO_TICKS(BUTTON_DEBOUNCE_TIME_MS))
+    {
+        // Log rec button was pressed
+        ESP_LOGI(TAG, "Rec button pressed");
+
+        // xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+
+        last_button_isr_time = isr_time; // Save last ISR time
+    }
+}
+
 /**
  * @brief Initializes the slot without card detect (CD) and write protect (WP) signals.
  * It formats the card if mount fails and initializes the card. After the card has been
@@ -136,13 +163,17 @@ void rec_and_read_task(void *task_param)
     StreamBufferHandle_t rec_stream_buf = (StreamBufferHandle_t)task_param;
 
     // allocate memory for the read buffer
-    audio_output_buf = (uint8_t *)calloc(BYTE_RATE / 2, sizeof(char));
+    audio_output_buf = (uint8_t *)calloc(BYTE_RATE / 4, sizeof(char));
     // check if memory allocation was successful
     if (audio_output_buf == NULL)
     {
         ESP_LOGE(TAG, "Error allocating memory for audio output buffer");
         vTaskDelete(NULL);
     }
+
+    // check the stack high watermark before writing to the stream buffer
+    UBaseType_t stack_high_watermark = uxTaskGetStackHighWaterMark(NULL);
+    ESP_LOGI(TAG, "Stack high watermark before writing to audio buffer: %d", stack_high_watermark);
 
     while (flash_wr_size < flash_rec_size)
     {
@@ -151,9 +182,12 @@ void rec_and_read_task(void *task_param)
         {
             ESP_LOGI(TAG, "Read %d bytes from rec_stream_buf", num_bytes);
             fwrite(audio_output_buf, 1, num_bytes, f);
-            fwrite(audio_output_buf, 1, num_bytes, csv);
+            // fwrite(audio_output_buf, 1, num_bytes, csv);
             flash_wr_size += num_bytes;
             ESP_LOGI(TAG, "Wrote %d/%ld bytes to file - %ld%%", flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
+            // check stack high watermark after writing to the stream buffer
+            stack_high_watermark = uxTaskGetStackHighWaterMark(NULL);
+            ESP_LOGI(TAG, "Stack high watermark after writing to audio buffer: %d", stack_high_watermark);
         }
         else
         {
@@ -177,6 +211,30 @@ void rec_and_read_task(void *task_param)
 void init_recording(StreamBufferHandle_t xStreamBufferRec)
 {
     ESP_LOGI(TAG, "Starting recording task");
+    // Initialize semaphore
+    // xSemaphore = xSemaphoreCreateBinary();
+
+    // check the stack remaining space before creating the task
+    UBaseType_t stack_high_water_mark = uxTaskGetStackHighWaterMark(NULL);
+    ESP_LOGI(TAG, "Stack high water mark before cofiguring gpio: %d", stack_high_water_mark);
+
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_POSEDGE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.pin_bit_mask = (1ULL << REC_BUTTON_GPIO);
+    gpio_config(&io_conf);
+
+    gpio_install_isr_service(0);
+    // gpio_isr_handler_add(REC_BUTTON_GPIO, rec_button_isr_handler, NULL);
+
+    // check the stack remaining space after creating the task
+    stack_high_water_mark = uxTaskGetStackHighWaterMark(NULL);
+    ESP_LOGI(TAG, "Stack high water mark after cofiguring gpio: %d", stack_high_water_mark);
+
+    // force if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) to be true
+    // xSemaphoreGive(xSemaphore);
+
     // check if xStreamBufferRec is null
     if (xStreamBufferRec == NULL)
     {
@@ -184,6 +242,6 @@ void init_recording(StreamBufferHandle_t xStreamBufferRec)
     }
     else
     {
-        xTaskCreate(rec_and_read_task, "rec_and_read_task", 2 * CONFIG_SYSTEM_EVENT_TASK_STACK_SIZE, xStreamBufferRec, IDLE_TASK_PRIO + 1, NULL);
+        xTaskCreate(rec_and_read_task, "rec_and_read_task", 4096, xStreamBufferRec, IDLE_TASK_PRIO, NULL);
     }
 }
