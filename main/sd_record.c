@@ -158,13 +158,25 @@ void rec_and_read_task(void *task_param)
 
     while (flash_wr_size < flash_rec_size)
     {
-        size_t num_bytes = xStreamBufferReceive(rec_stream_buf, (char *)audio_output_buf, BYTE_RATE / 4, portMAX_DELAY);
+        size_t num_bytes = xStreamBufferReceive(rec_stream_buf, (char *)audio_output_buf, BYTE_RATE/4, portMAX_DELAY);
         size_t peak_data = xStreamBufferReceive(freq_stream_data, (float *)freq_output_buf, 4*sizeof(float), portMAX_DELAY);
+        // size_t peak_data = 0;
         if (num_bytes > 0)
         {
             ESP_LOGI(TAG, "Read %d bytes from rec_stream_buf", num_bytes);
             fwrite(audio_output_buf, 1, num_bytes, f);
-            // write the frequency data float array to the csv file and seperate by commas
+
+            // while(peak_data < 4*sizeof(float)*8){
+            //     size_t bytes_read = xStreamBufferReceive(freq_stream_data, (float *)freq_output_buf, 4*sizeof(float), portMAX_DELAY);
+            //     peak_data += bytes_read;
+            //     // write the frequency data float array to the csv file and seperate by commas
+            //     fprintf(csv, "%f,%f,%f,%f\n", freq_output_buf[0], freq_output_buf[1], freq_output_buf[2], freq_output_buf[3]);
+            //     // clear the freq__output_buf
+            //     memset(freq_output_buf, 0, 4*sizeof(float));
+            // }
+            // // reset the peak_data counter
+            // peak_data = 0;
+
             fprintf(csv, "%f,%f,%f,%f\n", freq_output_buf[0], freq_output_buf[1], freq_output_buf[2], freq_output_buf[3]);
             flash_wr_size += num_bytes;
             ESP_LOGI(TAG, "Wrote %d/%ld bytes to file - %ld%%", flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
