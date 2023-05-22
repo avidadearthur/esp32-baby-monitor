@@ -195,9 +195,6 @@ void rec_and_read_task(void *task_param)
             fprintf(csv, "%f,%f,%f,%f\n", freq_output_buf[0], freq_output_buf[1], freq_output_buf[2], freq_output_buf[3]);
             flash_wr_size += num_bytes;
             ESP_LOGI(TAG, "Wrote %d/%ld bytes to file - %ld%%", flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
-            // check stack high watermark after writing to the stream buffer
-            stack_high_watermark = uxTaskGetStackHighWaterMark(NULL);
-            ESP_LOGI(TAG, "Stack high watermark after writing to audio buffer: %d", stack_high_watermark);
         }
         else
         {
