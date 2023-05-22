@@ -92,16 +92,16 @@ void i2s_adc_capture_task(void *task_param)
             if (i2s_read(EXAMPLE_I2S_NUM, (char *)mic_read_buf, read_len, &bytes_read, ticks_to_wait) != ESP_OK)
             {
                 ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
-                deinit_config();
-                exit(errno);
+                // deinit_config();
+                // exit(errno);
             }
 
             // check if the number of bytes read is equal to the number of bytes to read
             if (bytes_read != read_len)
             {
                 ESP_LOGE(TAG, "Error reading from i2s adc: %d", errno);
-                deinit_config();
-                exit(errno);
+                // deinit_config();
+                // exit(errno);
             }
 
 /**
@@ -112,8 +112,8 @@ void i2s_adc_capture_task(void *task_param)
             if (byte_sent != (EXAMPLE_I2S_READ_LEN / 16))
             {
                 ESP_LOGE(TAG, "Error: only sent %d bytes to the stream buffer out of %d \n", byte_sent, (EXAMPLE_I2S_READ_LEN / 16));
-                deinit_config();
-                exit(errno);
+                // deinit_config();
+                // exit(errno);
             }
 #endif
 

@@ -150,17 +150,17 @@ void fft_task(void *task_param)
         #endif
 
         // if peak is in range of 350-550 Hz, then it is a note
-        if ((freq1 > 355.0 && freq1 < 450.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
+        if ((freq1 > 400.0 && freq1 < 500.0) & (freq2 > 1150.0 && freq2 < 1500.0)) {
 
             ESP_LOGI(TAG, "note detected at f0 %lf Hz with amplitude %lf and f2 %lf with amplitude %lf\n", freq1, max1, freq2, max2);
             // if amplitude of frequency 1 is greater than 0.06, then cry score + 1
             int cry_score = 0;
-            if (max1 > 0.03)
+            if (max1 > 0.1)
             {
                 cry_score++;
             }
             // // if amplitude of frequency 2 is greater than 0.06, then cry score + 1
-            if (max2 > 0.01)
+            if (max2 > 0.1)
             {
                 cry_score++;
             }

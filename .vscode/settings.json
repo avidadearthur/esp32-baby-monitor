@@ -4,6 +4,7 @@
   "idf.espIdfPath": "/Users/jeffeehsiung/esp/esp-idf",
   "idf.toolsPath": "/Users/jeffeehsiung/.espressif",
   "idf.flashType": "UART",
+  "idf.monitorBaudRate": "115200",
   "idf.adapterTargetName": "esp32",
   "files.associations": {
     "sdkconfig.h": "c",
