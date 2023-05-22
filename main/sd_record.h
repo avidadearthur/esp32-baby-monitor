@@ -45,7 +45,7 @@
 
 void mount_sdcard(void);
 void generate_wav_header(char *wav_header, uint32_t wav_size, uint32_t sample_rate);
-void rec_and_read_task(void* task_param);
+void rec_and_read_task(void *task_param);
 void init_recording(StreamBufferHandle_t net_stream_buf, StreamBufferHandle_t freq_stream_buf);
 
 #endif

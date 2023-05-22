@@ -29,7 +29,8 @@
     "regex": "c",
     "utility": "c",
     "audio_example_file.h": "c",
-    "string": "c"
+    "string": "c",
+    "cstdio": "c"
   },
   "idf.portWin": "COM6",
   "idf.openOcdConfigs": [
