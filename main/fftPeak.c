@@ -193,6 +193,12 @@ void fft_task(void *task_param)
                 memset(fft_input, 0, (fft_analysis->size) / 2 + 1);
                 memset(fft_analysis->output, 0, (fft_analysis->size));
                 memset(fft_analysis->input, 0, (fft_analysis->size));
+                // reset freq1, freq2, max1, max2, and cryscore
+                freq1 = 0;
+                freq1 = 0;
+                max1 = 0;
+                max2 = 0;
+                cry_score = 0;
 
                 // if music task handle is not null, then delete the music task
                 if ((music_task_handle = get_music_play_task_handle()) != NULL)

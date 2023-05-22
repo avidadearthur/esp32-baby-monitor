@@ -20,7 +20,7 @@ def get_wave_array_str(filename, target_bits):  # type: (str, int) -> str
     print(nchannels, sampwidth, framerate, nframes, comptype, compname)
     sampwidth *= 8
     for i in range(wave_read.getnframes()):
-        val, = struct.unpack('<I', wave_read.readframes(1))
+        val, = struct.unpack('<H', wave_read.readframes(1))
         scale_val = (1 << target_bits) - 1
         cur_lim   = (1 << sampwidth) - 1
         # scale current data to 8-bit data

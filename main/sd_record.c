@@ -196,7 +196,7 @@ void rec_and_read_task(void *task_param)
             flash_wr_size += num_bytes;
             ESP_LOGI(TAG, "Wrote %d/%ld bytes to file - %ld%%", flash_wr_size, flash_rec_size, (flash_wr_size * 100) / flash_rec_size);
             // check stack high watermark after writing to the stream buffer
-            ESP_LOGI(TAG, "Stack high watermark after writing to audio buffer: %d", stack_high_watermark);
+            // ESP_LOGI(TAG, "Stack high watermark after writing to audio buffer: %d", stack_high_watermark);
         }
         else
         {
@@ -223,9 +223,9 @@ void init_recording(StreamBufferHandle_t xStreamBufferRec, StreamBufferHandle_t 
     // Initialize semaphore
     // xSemaphore = xSemaphoreCreateBinary();
 
-    // check the stack remaining space before creating the task
-    UBaseType_t stack_high_water_mark = uxTaskGetStackHighWaterMark(NULL);
-    ESP_LOGI(TAG, "Stack high water mark before cofiguring gpio: %d", stack_high_water_mark);
+    // // check the stack remaining space before creating the task
+    // UBaseType_t stack_high_water_mark = uxTaskGetStackHighWaterMark(NULL);
+    // ESP_LOGI(TAG, "Stack high water mark before cofiguring gpio: %d", stack_high_water_mark);
 
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_POSEDGE;
@@ -238,8 +238,8 @@ void init_recording(StreamBufferHandle_t xStreamBufferRec, StreamBufferHandle_t 
     // gpio_isr_handler_add(REC_BUTTON_GPIO, rec_button_isr_handler, NULL);
 
     // check the stack remaining space after creating the task
-    stack_high_water_mark = uxTaskGetStackHighWaterMark(NULL);
-    ESP_LOGI(TAG, "Stack high water mark after cofiguring gpio: %d", stack_high_water_mark);
+    // stack_high_water_mark = uxTaskGetStackHighWaterMark(NULL);
+    // ESP_LOGI(TAG, "Stack high water mark after cofiguring gpio: %d", stack_high_water_mark);
 
     // force if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) to be true
     // xSemaphoreGive(xSemaphore);
