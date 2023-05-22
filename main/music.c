@@ -88,11 +88,15 @@ void music_task(void* task_param)
     int offset = 0;
     int tot_size = sizeof(audio_table);
     example_set_file_play_mode();
-    while (offset < tot_size) {
+    // play the music twice
+    for(int i = 0; i < 2; i++){
+        while (offset < tot_size) {
         int play_len = ((tot_size - offset) > (4 * 1024)) ? (4 * 1024) : (tot_size - offset);
         int i2s_wr_len = example_i2s_dac_data_scale(i2s_write_buff, (uint8_t*)(audio_table + offset), play_len);
         i2s_write(EXAMPLE_I2S_NUM, i2s_write_buff, i2s_wr_len, &bytes_written, portMAX_DELAY);
         offset += play_len;
+        }
+        offset = 0;
     }
     vTaskDelay(10 / portTICK_PERIOD_MS);
     example_reset_play_mode();

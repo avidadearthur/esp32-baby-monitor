@@ -72,6 +72,8 @@ void i2s_adc_capture_task(void *task_param)
             vTaskSuspend(espnow_send_task_handle);
             // disable i2s adc
             i2s_adc_disable(EXAMPLE_I2S_NUM);
+            // enable dac
+            i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN);
             // clear the fft stream buffer to avoid retriggering music task
             xStreamBufferReset(fft_stream_buf);
             // notify music task to resume
@@ -79,6 +81,8 @@ void i2s_adc_capture_task(void *task_param)
 
             // wait for notification to resume adc capture task
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            // disable dac
+            i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
             // enable i2s adc
             i2s_adc_enable(EXAMPLE_I2S_NUM);
             // resume espnow send task

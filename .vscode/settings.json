@@ -30,7 +30,8 @@
     "utility": "c",
     "audio_example_file.h": "c",
     "string": "c",
-    "cstdio": "c"
+    "cstdio": "c",
+    "audio_example_file_o.h": "c"
   },
   "idf.portWin": "COM6",
   "idf.openOcdConfigs": [
