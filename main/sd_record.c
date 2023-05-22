@@ -186,7 +186,7 @@ void rec_and_read_task(void *task_param)
     while (flash_wr_size < flash_rec_size)
     {
         size_t num_bytes = xStreamBufferReceive(rec_stream_buf, (char *)audio_output_buf, BYTE_RATE / 4, portMAX_DELAY);
-        size_t peak_data = xStreamBufferReceive(freq_stream_data, (float *)freq_output_buf, 4*sizeof(float), portMAX_DELAY);
+        size_t peak_data = xStreamBufferReceive(freq_stream_data, (float *)freq_output_buf, 4 * sizeof(float), portMAX_DELAY);
         if (num_bytes > 0)
         {
             ESP_LOGI(TAG, "Read %d bytes from rec_stream_buf", num_bytes);
