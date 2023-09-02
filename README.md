@@ -24,7 +24,7 @@ a baby is crying. All temperature, position, and audio data is captured at the b
 microcontroller, and then sent wirelessly to the parent’s side.
 
 <p align="center">
-  <img width="575" alt="toplevelblockdiagram" src="https://github.com/avidadearthur/esp32-baby-monitor/assets/42184405/ccacbd11-8c36-41ce-bc39-6f5566b18d68">
+  <img width="575" alt="toplevelblockdiagram" src="toplevelblockdiagram.png">
   <br>
   <em>Figure 1: Top-level block diagram</em>
 </p>
@@ -59,7 +59,7 @@ allow high latency and require low power consumption, such as temperature and po
 ### Baby Module A
 
 <p align="center">
-  <img width="434" alt="BMDA" src="https://github.com/avidadearthur/esp32-baby-monitor/assets/42184405/e19b4596-8ced-4f0c-9e7e-5208f9c5b91d">
+  <img width="434" alt="BMDA" src="BMDA.png">
   <br>
   <em>Figure 2.1: Block diagram of Baby Module A</em>
 </p>
@@ -72,7 +72,7 @@ of the magnet change. This is detected by the Hall sensors.
 ### Baby Module B
 
 <p align="center">
-  <img width="518" alt="BMDB" src="https://github.com/avidadearthur/esp32-baby-monitor/assets/42184405/530679c9-f874-4bdf-b992-7899b0213c0c">
+  <img width="518" alt="BMDB" src="BMDB.png">
   <br>
   <em>Figure 2.2: Block diagram of Baby Module B</em>
 </p>
@@ -83,7 +83,7 @@ ESP32, the proposed Module B, depicted in Figure 2.2, includes an S15OT421 MEMS 
 ### Parent's Module
 
 <p align="center">
-  <img width="485" alt="PMD" src="https://github.com/avidadearthur/esp32-baby-monitor/assets/42184405/82b8174e-c9bb-4255-ba4b-5c4c15da2bf2">
+  <img width="485" alt="PMD" src="PMD.png">
   <br>
   <em>Figure 2.3: Block diagram for the Parent's Module</em>
 </p>
